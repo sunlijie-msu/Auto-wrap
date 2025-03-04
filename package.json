@@ -1,0 +1,30 @@
+{
+  "name": "ensdf-auto-wrap",
+  "displayName": "ENSDF Auto Wrap",
+  "description": "Auto-wrap text to 80 columns for ENSDF formatting",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onCommand:ensdf.wrap80"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ensdf.wrap80",
+        "title": "ENSDF: Wrap Text to 80 Columns"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "typescript": "^4.8.4",
+    "vscode": "^1.1.37"
+  }
+}
