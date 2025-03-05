@@ -16,6 +16,14 @@
         "command": "ensdf.wrap80",
         "title": "ENSDF: Wrap Text to 80 Columns"
       }
+    ],
+    "keybindings": [
+      {
+        "command": "ensdf.wrap80",
+        "key": "ctrl+shift+w",
+        "mac": "cmd+shift+w",
+        "when": "editorTextFocus"
+      }
     ]
   },
   "scripts": {
