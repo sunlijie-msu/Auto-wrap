@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2017",
+    "target": "es2019",
     "outDir": "out",
-    "lib": ["es2017"],
+    "lib": ["es2019"],
     "skipLibCheck": true,
     "rootDir": "src",
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "exclude": [
+    "node_modules",
+    ".vscode-test"
+  ]
 }
