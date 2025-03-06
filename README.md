@@ -6,7 +6,7 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 ## Installation
 
 1. **Download the VSIX Package**  
-   Download the file `ensdf-auto-wrap-0.0.1.vsix`.
+   Download the file `ensdf-auto-wrap-0.0.2.vsix`.
 
 2. **Install the Extension**  
    - Open Visual Studio Code.
@@ -26,7 +26,8 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 
 2. **Wrap the Text:**  
    - Press **Ctrl+Shift+P** to open the Command Palette.
-   - Run the command **"ENSDF: Wrap Text to 80 Columns"**.
+   - Run the command **"ENSDF: Wrap Text to 80 Columns"** to wrap all text in the file.
+   - Run the command **"ENSDF: Wrap Text to 80 Columns (selected)"** to wrap only the selected text.
    - The extension will reformat the file so that no line exceeds 80 columns, inserting continuation prefixes (e.g., " 35P 2c  ", " 35P 3c  ", etc.) as needed.
 
 ## Contributing & Feedback
