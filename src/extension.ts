@@ -757,11 +757,9 @@ function makeCommand(namePrefix: string,option: string): vscode.Disposable {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 
-	option=option.trim().toUpperCase();
-	if(option!=="SELECTED"&&option!=="ALL"){
-		option="All";
-	}else{
-		option=option.charAt(0)+option.toLowerCase().substring(1);
+	option=option.trim().toLowerCase();
+	if(option!=="selected"&&option!=="all"){
+		option="all";
 	}
 	const disposable = vscode.commands.registerCommand(namePrefix+option, () => {
 		// The code you place here will be executed every time your command is executed
