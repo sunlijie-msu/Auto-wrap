@@ -18,6 +18,7 @@ const elementSymbols = [
 ];
 
 function isElementSymbol(symbol: string): boolean {
+	
     return elementSymbols.some(element => element.toLowerCase() === symbol.toLowerCase());
 }
 
@@ -96,13 +97,18 @@ function extractLeadingNumber(text: string): string {
     return match ? match[0] : "";
 }
 
+
 /**
  * make a ENSDF line prefix using given NUCID and line type
  * @param NUCID: size<=5, eg, "1H", "9BE","23NA","119AG"
  * @param type: size<=4, eg, "L", "CL","2 L","CDP","2 DP"  
+ * @param AsIs: true for using type as is like "151HO2cL "
+ *              false for making the prefix for the first 
+ *              comment line, e.g., if type="2cL", prefix
+ *              could be "151HO cL ", instead of "151HO2cL "
  * @returns 
  */
-function makeENSDFLinePrefix(NUCID: string, type: string): string {
+function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean): string {
     let s = "";
     let n = 0;
     if (type.trim().length > 4) {
@@ -144,20 +150,27 @@ function makeENSDFLinePrefix(NUCID: string, type: string): string {
         if (s.length > 1){
             c2 = s.toUpperCase().charAt(1);
 		}
+
+		//console.log("s="+s+"$ c1="+c1+"$ c2="+c2+"$");
+
         let s1 = "", s2 = "";
         if (c1 === "C" || (c1 === "D" && s.length === 1)) { // comment and document lines, "CL", "D"
             s1 = " " + s.charAt(0);
             s2 = s.substring(1);
-        } else if (c2 === "C" || (c2 === "D" && s.length === 2)) { // "2CL","2D"
-            s1 = " " + s.charAt(1);
+        } else if (c2 === "C" || (c2 === "D" && s.length === 2)) { // "2CL", "2D"
+			if(!AsIs){
+				s1 = " " + s.charAt(1);
+			}else{
+				s1=s.substring(0,2);
+			}
             s2 = s.substring(2);
         } else if (c2 === " ") { // continuation record
             s1 = s.substring(0, 2);
             s2 = s.substring(2);
             if (s2.trim().length === 1 && "NPDT".includes(s2.trim())) {
                 if (c1 === "D") { // document for prompt particle record, not continuation record
-                    s1 = " " + s.charAt(1);
-                    s2 = " " + s2;
+					s1 = " " + s.charAt(1);
+					s2 = " " + s2;
                 }
             } else {
                 s2 = s2.trim(); // e.g., type is incorrectly given as "2  L", while it should be "2 L "
@@ -167,9 +180,14 @@ function makeENSDFLinePrefix(NUCID: string, type: string): string {
             s2 = s.substring(1);
             if ("NPDT".includes(c2) && s2.length === 1) { // prompt particle decay record
                 s2 = " " + s2;
-            } else if (c2 === "D" && s.length > 2) { // "2DL", "2DP", document, not continuation record
-                s1 = " " + s.charAt(1);
-                s2 = s.substring(2);
+            } else if (c2 === "D" && s.length > 2) { // "2DL", "2DP", "2DDN", document, not continuation record
+				if(AsIs){
+					s1 = s.substring(0,2);
+				}else{
+					s1 = " " + s.charAt(1);
+				}
+				s2 = s.substring(2);
+				//console.log("###s="+s+"$ s1="+s1+"$ s2="+s2);
             }
         } else if (s.length === 1) { // NPQLGBEAH record
             s1 = "  ";
@@ -183,6 +201,11 @@ function makeENSDFLinePrefix(NUCID: string, type: string): string {
         } else if ((c2 === "C" || c2 === "D") && s.length > 2 && "LGBEADHQ".includes(s.toUpperCase().charAt(2))) {
             s1 = s.substring(0, 2);
             s2 = s.substring(2);
+
+			if(!AsIs){
+				s1=" "+s.charAt(1);
+			}
+			//console.log("###s="+s+"$ s1="+s1+"$ s2="+s2);
         }
 
         if (s2.length >= 2){
@@ -191,6 +214,7 @@ function makeENSDFLinePrefix(NUCID: string, type: string): string {
             s2 = s2.padEnd(2);
 		}
         type = s1 + s2.toUpperCase();
+		//console.log("NUCID="+NUCID+"$ type="+type+"$");
     }
 
     return `${NUCID.padStart(5)}${type.padStart(4)}`;
@@ -202,7 +226,7 @@ function makeENSDFLinePrefix(NUCID: string, type: string): string {
  * @param line: must start with a prefix which has a NUCID and comment linetype 
  *              (like "cL", "L", "2cL") separated by at least one blank space, 
  *              except for delayed-particle record, like " 44CA2cDP"
- * @returns a two-element array: [0] for NUCID, [1] for line type, [3] for 
+ * @returns a 4-element array: [0] for NUCID, [1] for line type, [3] for 
  *              comment body, [4] for re-formated prefix using NUCID+linetype,  
  */
 function parseNUCIDandComType(line: string): string[] {
@@ -240,7 +264,7 @@ function parseNUCIDandComType(line: string): string[] {
 					lineType =s.substring(0,match[0].length);
 					comBody=s.substring(match[0].length).trim();
 				}
-				//console.log(line+"\n1 type="+lineType+" body="+comBody);
+				//console.log(line+"\n1 type="+lineType+"$ body="+comBody);
 			}else{
 				let n=s.indexOf(" ");
 				if(n>0){
@@ -249,7 +273,7 @@ function parseNUCIDandComType(line: string): string[] {
                         lineType=s1;
 						comBody=s.substring(n).trim();
 					}
-
+					//console.log(line+"\n1 type="+lineType+"$ body="+comBody);
 					//console.log(line+"\n2 type="+lineType+" n="+n+"  s="+s+" s1="+s1+"  body="+comBody);
 					//console.log(s1.match(/^[2-9a-zA-Z]?[CD][LGBAEP]?$/));
 				}
@@ -259,7 +283,7 @@ function parseNUCIDandComType(line: string): string[] {
 				out[0]=NUCID;
 				out[1]=lineType;
 				out[2]=comBody;
-				out[3]=makeENSDFLinePrefix(NUCID,lineType);
+				out[3]=makeENSDFLinePrefix(NUCID,lineType,true);
 
 				//console.log(line);
 				//console.log("NUCID="+NUCID+"$type="+lineType+"$prefix="+out[3]+"$body="+comBody);
@@ -319,10 +343,10 @@ function extractLeadingNUCID(text: string): string {
 
 
 /**
- * Wrap text into an array of lines with maximum width.
+ * split a long text (no prefix) of a single comment into an array of lines with maximum width.
  * If no spaces are found, it will simply break the text into chunks.
  */
-function wrapText(text: string, NUCID:string, prefix:string, maxWidth: number): string[] {
+function splitCommentText(text: string, NUCID:string, prefix:string, maxWidth: number): string[] {
 
 	let maxWidth0=maxWidth;
 	let maxWidth1=maxWidth;
@@ -476,6 +500,41 @@ function getContinuationPrefix(basePrefix: string, count: number): string {
     return NUCID + label ;
 }
 
+function getNextPrefix(currPrefix: string): string {
+    // Fixed part: columns 1-5 (should be " 35P " for 35P)
+    const NUCID = currPrefix.substring(0, 5);
+    const recordType = currPrefix.substring(6, 9);
+	let c1=currPrefix.charAt(5);//"151DY2cL "; charAt(5)=2
+	let c2=currPrefix.charAt(6);//"c" or "d" for comment/document, " " for record/continuation record
+	let c3=currPrefix.charAt(7);//record line type
+	let c4=currPrefix.charAt(8);
+	if(c2===' '){
+		return currPrefix;
+	}
+	if(c1===' '){
+		return NUCID+"2"+c2+c3+c4;
+	}
+
+	let count=-1;
+	if(isDigit(c1)){
+		count=parseInt(c1);
+		count=count+1;
+	}else if(isLetter(c1)){
+		count=c1.charCodeAt(0)+1;
+	}else{
+		return currPrefix;
+	}
+
+    let label: string;
+    if (count < 10) {
+        label = count.toString() + recordType;
+    } else {
+        label = String.fromCharCode('a'.charCodeAt(0) + (count - 10)) + recordType;
+    }
+    // New prefix: fixed (6 chars) + label (2 chars) + space or particle-type (1 char) = 9 characters.
+    return NUCID + label ;
+}
+
 /**
  * wrap a long text of a comment and add prefix+wrapped lines into new lines
  * @param textToWrap: must start with NUCID
@@ -520,7 +579,7 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 		//console.log(basePrefix);
 
 		// Wrap content into parts of maximum availableWidth.
-		const wrappedParts = wrapText(content, NUCID, prefix, availableWidth);
+		const wrappedParts = splitCommentText(content, NUCID, prefix, availableWidth);
 
 		//console.log("### "+wrappedParts.length+"@"+textToWrap);
 		// First line uses original prefix.
@@ -543,7 +602,157 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 	}
 }
 
-function makeCommand(option: string): vscode.Disposable {
+/**
+ * Wrap a ENSDF text (selected or all in a dataset) to an array of new lines
+ * in 80-column format. 
+ * @param text: ENSDF text to wrap; could include one or multiple comments;
+ *              must start with (NUCID)+("cL" or "dL")+(comment body), 
+ *              separated by at least one blank space, otherwise it will not
+ *              be wrapped
+ * @returns an array of new lines in 80-column format
+ */
+function wrapENSDFText(text:string): string[] {
+	const newLines:string[]=[];
+	let s=text.trim();
+	let ns=s.indexOf(" ");
+	if(ns<0){
+		return newLines;	
+	}
+	let NUCID=s.substring(0,ns).trim().toUpperCase();
+	let isAbstract=false;
+
+	//text must start with (NUCID)+("cL" or "dL")+(comment body), separated by at least one blank space
+	//NUCID could be like "151HO", "1H", or "33" in an abstract dataset
+	if(NUCID.length>5){
+		let out=parseNUCIDandComType(text);
+		if(out.length>0){
+			NUCID=out[0];
+		}
+	}
+
+	if(!isNUCID(NUCID)){
+		if(isA(NUCID)){
+			s=s.substring(ns+1).trim();
+			ns=s.indexOf(" ");
+			if(ns>0){
+				s=s.substring(0,ns).toUpperCase();
+				if(s==='C'||s==='D'){
+					isAbstract=true;
+				}
+			}
+		}else{
+			
+		}
+		if(!isAbstract){
+			return newLines;
+		}
+	}
+
+	//console.log(text);
+	//console.log(startPos+"  "+endPos);
+	//const text = doc.getText();
+	//const startPos=0;
+	//const endPos=text.length;
+
+	const lines = text.split(/\r?\n/);
+
+
+	if(lines.length===0){
+		return newLines;
+	}
+
+	let tempText ="";
+
+	let count=0;
+	for (const line of lines) {
+		if (line.trim() === "") {
+			if(tempText.length>0){
+				wrapAndaddToNewLines(tempText,NUCID,newLines);
+				tempText="";
+			}
+
+			newLines.push("");
+			continue;
+		}
+		//console.log("1###"+line +" NUCID="+NUCID+" "+line.startsWith(NUCID));
+		if(!line.toUpperCase().trim().startsWith(NUCID)){
+			if(tempText.length>0){
+				tempText=tempText.trimEnd()+" "+line.trim();
+				if(lines.indexOf(line)===lines.length-1){//last line
+					wrapAndaddToNewLines(tempText,NUCID,newLines);
+				}
+			}else{
+				newLines.push(line);
+			}
+
+			continue;
+		}
+
+
+		//the following for an ENSDF line in correct format, but it is not necessary for wrapping
+		//const c1=line.charAt(5);
+		//const c2=line.toUpperCase().charAt(6);
+
+		let out=parseNUCIDandComType(line);
+		  
+		//console.log(out.length);
+
+		//if(c2!=="C"&&c2!=="D"){
+		if(out===null || out.length===0){
+			if(tempText.length>0){
+				wrapAndaddToNewLines(tempText,NUCID,newLines);
+				tempText="";
+			}
+			newLines.push(line);
+			continue;
+		}
+		
+		let NUCID1=out[0];
+		let comType=out[1];//"c", or "cL", or "2cL", similar for "d"
+		let comBody=out[2];
+		let prefix=out[3];
+
+		//console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
+		//if(c1===' '){
+		if(/^[CD]/.test(comType.toUpperCase()) || (count===0&&/^[[2-9A-Z][CD]/.test(comType.toUpperCase()) )){
+			if(tempText.length>0){
+				wrapAndaddToNewLines(tempText,NUCID,newLines);
+			}
+			tempText=line.trimEnd();
+			if(lines.indexOf(line)===lines.length-1){//last line
+				wrapAndaddToNewLines(tempText,NUCID,newLines);
+			}
+			count++;
+		}else{
+			if(tempText.length===0){
+				newLines.push(line);
+			}else{
+				tempText=tempText.trimEnd()+" "+comBody;
+				if(lines.indexOf(line)===lines.length-1){//last line
+					wrapAndaddToNewLines(tempText,NUCID,newLines);
+				}
+			}
+
+		}
+
+	}
+
+	return newLines;
+}
+
+function wrapENSDFTextToNewText(text:string, eol:string): string {
+	const newLines=wrapENSDFText(text);
+	//console.log("newLines "+newLines.length+" input text="+text);
+	if(newLines.length>0){
+		let s=newLines.join(eol);
+		//console.log("text="+text);
+		//console.log("new text="+s);
+		return s;
+	}
+	return "";
+}
+
+function makeCommand(namePrefix: string,option: string): vscode.Disposable {
 		// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
@@ -554,10 +763,10 @@ function makeCommand(option: string): vscode.Disposable {
 	}else{
 		option=option.charAt(0)+option.toLowerCase().substring(1);
 	}
-	option=option.toLowerCase();
-	const disposable = vscode.commands.registerCommand('ensdf.wrap80'+option, () => {
+	const disposable = vscode.commands.registerCommand(namePrefix+option, () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
+		//vscode.window.showInformationMessage('Hello World from ensdf-line-wrap!');
 
 		const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -569,7 +778,7 @@ function makeCommand(option: string): vscode.Disposable {
         let fullText = doc.getText();
 		let selection = editor.selection;
 		//let hasSelection = !selection.isEmpty;		
-		if(option==="Selected"){
+		if(option.toLowerCase()==="selected"){
 			text = doc.getText(selection);
 			
 			let lineNo=selection.end.line;
@@ -590,121 +799,12 @@ function makeCommand(option: string): vscode.Disposable {
 			selection=new vscode.Selection(doc.positionAt(0), doc.positionAt(text.length));
 		}
 
-		let s=text.trim();
-		let ns=s.indexOf(" ");
-		if(ns<0){
-			return;	
-		}
-		let NUCID=s.substring(0,ns).trim().toUpperCase();
-		let isAbstract=false;
+		const eol = doc.eol === vscode.EndOfLine.LF ? "\n" : "\r\n";
+		//const newLines=wrapENSDFText(text);
+        //const newText = newLines.join(eol);
 
-		//text must start with (NUCID)+("cL" or "dL")+(comment body), separated by at least one blank space
-		//NUCID could be like "151HO", "1H", or "33" in an abstract dataset
-		if(!isNUCID(NUCID)){
-			if(isA(NUCID)){
-				s=s.substring(ns+1).trim();
-				ns=s.indexOf(" ");
-				if(ns>0){
-					s=s.substring(0,ns).toUpperCase();
-					if(s==='C'||s==='D'){
-						isAbstract=true;
-					}
-				}
-			}
-			if(!isAbstract){
-				return;
-			}
-		}
+		const newText=wrapENSDFTextToNewText(text,eol);
 
-		//console.log(text);
-		//console.log(startPos+"  "+endPos);
-        //const text = doc.getText();
-		//const startPos=0;
-		//const endPos=text.length;
-
-        const lines = text.split(/\r?\n/);
-
-
-		if(lines.length===0){
-			return;
-		}
-        const newLines: string[] = [];
-
-        let tempText ="";
-
-        for (const line of lines) {
-            if (line.trim() === "") {
-				if(tempText.length>0){
-					wrapAndaddToNewLines(tempText,NUCID,newLines);
-					tempText="";
-				}
-
-                newLines.push("");
-                continue;
-            }
-			//console.log("1###"+line +" NUCID="+NUCID+" "+line.startsWith(NUCID));
-			if(!line.toUpperCase().trim().startsWith(NUCID)){
-				if(tempText.length>0){
-					tempText=tempText.trimEnd()+" "+line.trim();
-					if(lines.indexOf(line)===lines.length-1){//last line
-						wrapAndaddToNewLines(tempText,NUCID,newLines);
-					}
-				}else{
-					newLines.push(line);
-				}
-
-				continue;
-			}
-
-
-			//the following for an ENSDF line in correct format, but it is not necessary for wrapping
-			//const c1=line.charAt(5);
-			//const c2=line.toUpperCase().charAt(6);
-
-			let out=parseNUCIDandComType(line);
-              
-			//console.log(out.length);
-
-			//if(c2!=="C"&&c2!=="D"){
-			if(out===null || out.length===0){
-				if(tempText.length>0){
-					wrapAndaddToNewLines(tempText,NUCID,newLines);
-					tempText="";
-				}
-				newLines.push(line);
-				continue;
-			}
-			
-                        let NUCID1=out[0];
-			let comType=out[1];//"c", or "cL", or "2cL", similar for "d"
-			let comBody=out[2];
-			let prefix=out[3];
-
-			//console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
-			//if(c1===' '){
-			if(/^[CD]/.test(comType.toUpperCase()) ){
-				if(tempText.length>0){
-					wrapAndaddToNewLines(tempText,NUCID,newLines);
-				}
-				tempText=line.trimEnd();
-				if(lines.indexOf(line)===lines.length-1){//last line
-					wrapAndaddToNewLines(tempText,NUCID,newLines);
-				}
-			}else{
-				if(tempText.length===0){
-					newLines.push(line);
-				}else{
-					tempText=tempText.trimEnd()+" "+comBody;
-					if(lines.indexOf(line)===lines.length-1){//last line
-						wrapAndaddToNewLines(tempText,NUCID,newLines);
-					}
-				}
-
-			}
-
-        }
-        const eol = doc.eol === vscode.EndOfLine.LF ? "\n" : "\r\n";
-        const newText = newLines.join(eol);
         editor.edit(editBuilder => {
             //const range = new vscode.Range(doc.positionAt(startPos), doc.positionAt(endPos));
             editBuilder.replace(selection, newText);
@@ -713,15 +813,175 @@ function makeCommand(option: string): vscode.Disposable {
 
 	return disposable;
 }
+
+
+function getCursorPosition() {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const position = editor.selection.active;
+        vscode.window.showInformationMessage(`Cursor Position - Line: ${position.line}, Character: ${position.character}`);
+    } else {
+        vscode.window.showInformationMessage('No active editor');
+    }
+}
+
+function getEOL(){
+	const editor = vscode.window.activeTextEditor;
+    if (editor) {
+		const doc = editor.document;
+		const eol = doc.eol === vscode.EndOfLine.LF ? "\n" : "\r\n";
+		return eol;
+	}
+	return "\n";
+}
+
+const MAX_COLUMN = 80; // Set your maximum column number here
+
+function wrapCurrentLine() {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+
+        const doc = editor.document;
+        const position = editor.selection.active;
+        const line = doc.lineAt(position.line);
+        const text = line.text;
+
+		let nextLine=doc.lineAt(position.line+1);
+		let remainingComText="";//remaining text of the same comment
+
+		let selection=new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0));
+		
+		if(nextLine===null){
+			remainingComText="";
+		}else{
+			let n=position.line+1;
+			let startPos=position;
+
+			let lastLine=doc.lineAt(n);//this is the first line of the remaining comment
+			if(n<doc.lineCount){
+				startPos=lastLine.range.start;
+			}
+			
+			while(n<doc.lineCount){
+				let s=doc.lineAt(n).text;
+				if(s.charAt(5)===' ' || s.charAt(6)===' '){
+					break;
+				}
+				remainingComText+=s+"\n";
+				lastLine=doc.lineAt(n);
+				n++;
+			}
+
+			let endPos=lastLine.range.end;
+			selection=new vscode.Selection(startPos,endPos);
+		}
+
+		
+		//console.log("#  "+position.line+"  "+position.character);
+
+        if (text.length > MAX_COLUMN || (text.length===MAX_COLUMN&&position.line===MAX_COLUMN) ) {
+			const char = text[MAX_COLUMN - 1];
+			
+            if (char !== ' ' && char !== '.') {
+                let wrapIndex = MAX_COLUMN - 1;
+                while (wrapIndex > 0 && text[wrapIndex] !== ' ') {
+                    wrapIndex--;
+                }
+				
+                if (wrapIndex > 0) {
+					
+                    const remainingLineText = text.substring(wrapIndex + 1);
+                    const newText = text.substring(0, wrapIndex);
+                    
+					
+					let out=parseNUCIDandComType(line.text);
+					if(out===null || out.length===0){
+						return;
+					}
+
+					//let NUCID=out[0];
+					//let lineType=out[1];
+					//let comBody=out[2];
+					let prefix=out[3];
+					//console.log(line.text+"  old="+prefix+"$");
+                    prefix=getNextPrefix(prefix);
+					//console.log(line.text+"  new="+prefix+"$");
+
+                    let newLine = prefix + remainingLineText.trim();
+					let toReplace=false;
+
+					let nextText="";
+					if(remainingLineText.trim().length===0 && text.charAt(position.line)===' '){
+						newLine="";
+					}else if(remainingComText.length>0){
+						let s=remainingComText;	
+						if(newLine.length>0){
+							s=newLine+"\n"+s;
+						}
+						//console.log("s="+s+"$");
+
+						nextText=wrapENSDFTextToNewText(s,getEOL());				
+						toReplace=true;	
+					}
+
+                    editor.edit(editBuilder => {
+                        editBuilder.replace(line.range, newText);
+						if(toReplace && !selection.isEmpty){
+							editBuilder.replace(selection,nextText);
+							//console.log("nextText="+nextText);
+						}else{
+							if(newLine.length>0){
+								editBuilder.insert(new vscode.Position(position.line + 1, 0), newLine + '\n');
+							} 
+						}
+                  
+                    }).then(() => {
+						
+			    if(newLine.length>0){							
+				    const newPosition = new vscode.Position(position.line + 1, newLine.length);						
+				    editor.selection = new vscode.Selection(newPosition, newPosition);						
+				    editor.revealRange(new vscode.Range(newPosition, newPosition));
+						
+			    }
+
+                    });
+                }
+            }
+        }
+    }
+}
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-
-	let disposable1 = makeCommand("selected");
-	let disposable2 = makeCommand("all");
+	let namePrefix="ensdf.wrap80";
+	let disposable1 = makeCommand(namePrefix,"selected");
+	let disposable2 = makeCommand(namePrefix,"all");
 	context.subscriptions.push(disposable1);
 	context.subscriptions.push(disposable2);
+    
+	let autoWrap=true;
+	if(autoWrap){
+		const disposable = vscode.workspace.onDidChangeTextDocument(event => {
+			const editor = vscode.window.activeTextEditor;
+			if (editor && event.document === editor.document) {
+				const position = editor.selection.active;
+				const document = editor.document;
+				const line = document.lineAt(position.line);
+				const text = line.text;
+				//console.log("@  "+position.line+"  "+position.character);
+	
+				if (position.character >= MAX_COLUMN-1 || text.length>MAX_COLUMN) {
+					wrapCurrentLine();
+				}
+			}
+		});
+		
+		context.subscriptions.push(disposable);
+	}
+	//console.log(makeENSDFLinePrefix("151HO","2cP",true)+"$");
+	// Initial check in case the cursor is already beyond the max column when the extension is activated
+	//wrapCurrentLine();
 }
 
 // This method is called when your extension is deactivated
