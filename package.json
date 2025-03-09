@@ -7,7 +7,7 @@
     "vscode": "^1.75.0"
   },
   "activationEvents": [
-    "onCommand:ensdf.wrap80all"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -19,6 +19,10 @@
       {
         "command": "ensdf.wrap80selected",
         "title": "ENSDF: Wrap Text to 80 Columns (selected)"
+      },
+      {
+        "command": "ensdf.toggleAutoWrap",
+        "title": "Toggle Auto Wrap ENSDF"
       }
     ],
     "keybindings": [
