@@ -594,10 +594,12 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 			sep=" ";
 		}
 		// For each additional part, generate a continuation prefix.
+		let prevPrefix=basePrefix;
 		for (let i = 1; i < wrappedParts.length; i++) {
-			const contPrefix = getContinuationPrefix(basePrefix, i + 1);
+			const contPrefix = getNextPrefix(prevPrefix);
 			line=contPrefix +sep+wrappedParts[i];
 			newLines.push(line.padEnd(80));
+			prevPrefix=contPrefix;
 		}	
 	}
 }
@@ -743,13 +745,17 @@ function wrapENSDFText(text:string): string[] {
 function wrapENSDFTextToNewText(text:string, eol:string): string {
 	const newLines=wrapENSDFText(text);
 	//console.log("newLines "+newLines.length+" input text="+text);
+	let s="";
 	if(newLines.length>0){
-		let s=newLines.join(eol);
+		s=newLines.join(eol);
 		//console.log("text="+text);
 		//console.log("new text="+s);
+
+	}
+	if(s.length>0){
 		return s;
 	}
-	return "";
+	return text;
 }
 
 function makeCommand(namePrefix: string,option: string): vscode.Disposable {
@@ -761,6 +767,7 @@ function makeCommand(namePrefix: string,option: string): vscode.Disposable {
 	if(option!=="selected"&&option!=="all"){
 		option="all";
 	}
+
 	const disposable = vscode.commands.registerCommand(namePrefix+option, () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
@@ -776,7 +783,7 @@ function makeCommand(namePrefix: string,option: string): vscode.Disposable {
         let fullText = doc.getText();
 		let selection = editor.selection;
 		//let hasSelection = !selection.isEmpty;		
-		if(option.toLowerCase()==="selected"){
+		if(option==="selected"){
 			text = doc.getText(selection);
 			
 			let lineNo=selection.end.line;
@@ -816,7 +823,7 @@ function makeCommand(namePrefix: string,option: string): vscode.Disposable {
 function getCursorPosition() {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-        const position = editor.selection.active;
+        const position = editor.selection.active;//position of the cursor
         vscode.window.showInformationMessage(`Cursor Position - Line: ${position.line}, Character: ${position.character}`);
     } else {
         vscode.window.showInformationMessage('No active editor');
@@ -835,12 +842,16 @@ function getEOL(){
 
 const MAX_COLUMN = 80; // Set your maximum column number here
 
-function wrapCurrentLine() {
+/**
+ * 
+ * wrap the current comment text only when the text starts with a NUCID and a valid comment type
+ */
+function autoWrapCurrentComment() {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
 
         const doc = editor.document;
-        const position = editor.selection.active;
+        const position = editor.selection.active;//###note this is the position of the cursor before change
         const line = doc.lineAt(position.line);
         const text = line.text;
 
@@ -862,7 +873,7 @@ function wrapCurrentLine() {
 			
 			while(n<doc.lineCount){
 				let s=doc.lineAt(n).text;
-				if(s.charAt(5)===' ' || s.charAt(6)===' '){
+				if(s.trim().length===0 || s.charAt(5)===' ' || s.charAt(6)===' '){
 					break;
 				}
 				remainingComText+=s+"\n";
@@ -874,10 +885,14 @@ function wrapCurrentLine() {
 			selection=new vscode.Selection(startPos,endPos);
 		}
 
-		
+		//console.log("1 curr line="+line.text+" **cursor="+position.character+" remainingCom="+remainingComText+" selection="+doc.getText(selection));
+		//console.log("     text length="+text.length+"##"+text.charAt(80)+"##"+text.trim().length);
 		//console.log("#  "+position.line+"  "+position.character);
 
-        if (text.length > MAX_COLUMN || (text.length===MAX_COLUMN&&position.line===MAX_COLUMN) ) {
+		//Note position.character is the column# (zero-based) before the change (or typing)
+		if (position.character >= MAX_COLUMN || 
+			(text.length>=MAX_COLUMN&&position.character===MAX_COLUMN-1)&&text.substring(MAX_COLUMN).trim().length===0 ) {
+        //if (text.length >= MAX_COLUMN || (text.length===MAX_COLUMN&&position.character===MAX_COLUMN) ) {
 			const char = text[MAX_COLUMN - 1];
 			
             if (char !== ' ' && char !== '.') {
@@ -889,10 +904,12 @@ function wrapCurrentLine() {
                 if (wrapIndex > 0) {
 					
                     const remainingLineText = text.substring(wrapIndex + 1);
-                    const newText = text.substring(0, wrapIndex);
-                    
-					
+                    const keptLineText = text.substring(0, wrapIndex);
+    
 					let out=parseNUCIDandComType(line.text);
+
+					//console.log("2 $$$ keptLineText="+keptLineText+"$ remainingLineText="+remainingLineText+"$ out="+out.length);
+
 					if(out===null || out.length===0){
 						return;
 					}
@@ -905,42 +922,91 @@ function wrapCurrentLine() {
                     prefix=getNextPrefix(prefix);
 					//console.log(line.text+"  new="+prefix+"$");
 
-                    let newLine = prefix + remainingLineText.trim();
+					//console.log("3 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" prefix="+prefix+"##");
+
+                    let newLineText = prefix + remainingLineText.trim();
 					let toReplace=false;
 
-					let nextText="";
-					if(remainingLineText.trim().length===0 && text.charAt(position.line)===' '){
-						newLine="";
+					let wrappedRemainingText="";//remainling part of curr line+remaining comment
+					if(remainingLineText.trim().length===0 && text.charAt(position.character)===' '){
+						newLineText="";
 					}else if(remainingComText.length>0){
 						let s=remainingComText;	
-						if(newLine.length>0){
-							s=newLine+"\n"+s;
+						if(newLineText.length>0){
+							s=newLineText+"\n"+s;
 						}
 						//console.log("s="+s+"$");
+						//console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" s="+s+"##newLine="+newLineText+"#");
 
-						nextText=wrapENSDFTextToNewText(s,getEOL());				
+						wrappedRemainingText=wrapENSDFTextToNewText(s,getEOL());	
+						
+						//console.log("5  wrappedRemainingText="+wrappedRemainingText+"#");
+
 						toReplace=true;	
 					}
+					//console.log("5.4 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
 
                     editor.edit(editBuilder => {
-                        editBuilder.replace(line.range, newText);
+                        editBuilder.replace(line.range, keptLineText);						
 						if(toReplace && !selection.isEmpty){
-							editBuilder.replace(selection,nextText);
-							//console.log("nextText="+nextText);
+							editBuilder.replace(selection,wrappedRemainingText);
+							
+							//console.log("5.5 new text="+wrappedRemainingText+" selection="+doc.getText(selection));
+	
 						}else{
-							if(newLine.length>0){
-								editBuilder.insert(new vscode.Position(position.line + 1, 0), newLine + '\n');
+							if(newLineText.length>0){
+								editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText + '\n');
 							} 
 						}
-                  
+
+						//console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+						
+						let resetCursorPos=false;
+						if(position.character>MAX_COLUMN-1){
+							resetCursorPos=true;
+						}else if(wrappedRemainingText.length>0){
+							resetCursorPos=true;
+						}else if(newLineText.length>0){
+							resetCursorPos=true;
+						}
+                        
+						if(resetCursorPos){
+							let next=position.line;		
+							if(next<doc.lineCount){
+								next+=1;
+							}
+							let nextLine=doc.lineAt(next);
+							const newPosition = new vscode.Position(next, Math.min(9,nextLine.text.length-1));
+							editor.selection = new vscode.Selection(newPosition, newPosition);
+							editor.revealRange(new vscode.Range(newPosition, newPosition));
+
+							//console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+						}
                     }).then(() => {
+						/*
+						console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
 						
-			    if(newLine.length>0){							
-				    const newPosition = new vscode.Position(position.line + 1, newLine.length);						
-				    editor.selection = new vscode.Selection(newPosition, newPosition);						
-				    editor.revealRange(new vscode.Range(newPosition, newPosition));
-						
-			    }
+						let resetCursorPos=false;
+						if(position.character>MAX_COLUMN-1){
+							resetCursorPos=true;
+						}else if(wrappedRemainingText.length>0){
+							resetCursorPos=true;
+						}else if(newLineText.length>0){
+							resetCursorPos=true;
+						}
+                        
+						if(resetCursorPos){
+							let next=position.line;		
+							if(next<doc.lineCount){
+								next+=1;
+							}
+							let nextLine=doc.lineAt(next);
+							const newPosition = new vscode.Position(next, Math.min(9,nextLine.text.length-1));
+							editor.selection = new vscode.Selection(newPosition, newPosition);
+							editor.revealRange(new vscode.Range(newPosition, newPosition));
+							console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+						}
+					    */
 
                     });
                 }
@@ -949,37 +1015,134 @@ function wrapCurrentLine() {
     }
 }
 
+let autoWrap=false;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	let namePrefix="ensdf.wrap80";
-	let disposable1 = makeCommand(namePrefix,"selected");
+	let extensionID="ensdf";
+	let commandPrefix="wrap80";
+	let namePrefix=extensionID+"."+commandPrefix;
+
+	//command name=namePrefix+option must be the same as the corresponding "commands"
+	//in package.json
+
+	let disposable1 = makeCommand(namePrefix,"selected");//(namePrefix,option)
 	let disposable2 = makeCommand(namePrefix,"all");
 	context.subscriptions.push(disposable1);
 	context.subscriptions.push(disposable2);
     
-	let autoWrap=true;
-	if(autoWrap){
-		const disposable = vscode.workspace.onDidChangeTextDocument(event => {
+
+	//if(autoWrap){
+		//getCursorPosition();
+		const autoWrapDisposable = vscode.workspace.onDidChangeTextDocument(event => {
 			const editor = vscode.window.activeTextEditor;
-			if (editor && event.document === editor.document) {
-				const position = editor.selection.active;
+
+			if (autoWrap && editor && event.document === editor.document) {
+				const position = editor.selection.active;//Note this is the initial cursor position before change
 				const document = editor.document;
 				const line = document.lineAt(position.line);
 				const text = line.text;
 				//console.log("@  "+position.line+"  "+position.character);
-	
-				if (position.character >= MAX_COLUMN-1 || text.length>MAX_COLUMN) {
-					wrapCurrentLine();
+				//vscode.window.showInformationMessage(`#Cursor Position - Line: ${position.line}, Character: ${position.character}`);
+
+				//if (position.character >= MAX_COLUMN-1 || text.length>MAX_COLUMN) {//trigger auto-wrap when cursor>80 or line length>80
+				if (position.character >= MAX_COLUMN-1 && editor.selection.isEmpty) {//trigger auto-wrap only when cursor goes beyond column 80
+					autoWrapCurrentComment();
 				}
 			}
 		});
-		
-		context.subscriptions.push(disposable);
-	}
+		context.subscriptions.push(autoWrapDisposable);
+	//}
+
+	//add a status bar item for running wrapping command by clicking on it
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	let statusText0='$('+extensionID+') Wrap ENSDF';//'$('+extensionID+') for icon, since there is none, no icon will show
+	let autoWrapLabel="Auto-wrap ON";
+
+    statusBarItem.text = statusText0;
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
+
+    // Update the status bar item command and tooltip based on the selection
+    const updateStatusBarItem = () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const selection = editor.selection;
+			if(autoWrap){
+				//toggle autoWrap off
+				statusBarItem.command=extensionID+'.toggleAutoWrap',
+				statusBarItem.text = autoWrapLabel;
+				statusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
+			}else{
+				statusBarItem.text = statusText0;
+				if (selection.isEmpty) {
+					statusBarItem.command = namePrefix+"all";
+					statusBarItem.tooltip = 'Wrap all ENSDF lines';
+				} else {
+					statusBarItem.command = namePrefix+"selected";
+					statusBarItem.tooltip = 'Wrap selected ENSDF lines';
+				}
+			}
+
+        }
+    };
+
+    // Update the status bar item when the selection changes
+    const selectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection(updateStatusBarItem);
+    context.subscriptions.push(selectionChangeDisposable);
+
+    // Initial update of the status bar item
+    updateStatusBarItem();
+
+    // Register the toggleAutoWrap command
+    const toggleAutoWrapDisposable = vscode.commands.registerCommand(extensionID+'.toggleAutoWrap', () => {
+        autoWrap = !autoWrap;
+		if (autoWrap) {
+			statusBarItem.command=extensionID+'.toggleAutoWrap',
+            statusBarItem.text = autoWrapLabel;
+            statusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
+        } else {
+            updateStatusBarItem();
+        }
+        vscode.window.showInformationMessage(`Auto Wrap is now ${autoWrap ? 'enabled' : 'disabled'}`);
+    });
+    context.subscriptions.push(toggleAutoWrapDisposable);
+
+	/*
+	const cursorPositionDisposable = vscode.window.onDidChangeTextEditorSelection(event => {
+        const editor = event.textEditor;
+        const position = editor.selection.active;//Note this is the new cursor position after move
+        vscode.window.showInformationMessage(`@Cursor Position - Line: ${position.line}, Character: ${position.character}`);
+    });
+    context.subscriptions.push(cursorPositionDisposable);
+	*/
+	
 	//console.log(makeENSDFLinePrefix("151HO","2cP",true)+"$");
-	// Initial check in case the cursor is already beyond the max column when the extension is activated
-	//wrapCurrentLine();
+
+    // Create a status bar item for displaying the current line and column numbers
+    const lineColumnStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+    lineColumnStatusBarItem.text = 'L1, C1';
+    lineColumnStatusBarItem.show();
+    context.subscriptions.push(lineColumnStatusBarItem);
+
+    // Function to update the line and column numbers in the status bar
+    const updateLineColumnStatusBarItem = () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            const position = editor.selection.active;
+            lineColumnStatusBarItem.text = `L${position.line + 1}, C${position.character + 1}`;
+        }
+    };
+
+    // Update the line and column numbers status bar item when the selection changes
+    const selectionChangeDisposable1 = vscode.window.onDidChangeTextEditorSelection(updateLineColumnStatusBarItem);
+    context.subscriptions.push(selectionChangeDisposable1);
+
+    // Initial update of the line and column numbers status bar item
+    updateLineColumnStatusBarItem();
+
+
 }
 
 // This method is called when your extension is deactivated
