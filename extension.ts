@@ -1114,8 +1114,8 @@ let autoWrap=false;
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	let extensionID="wrap-ensdf-lines";
-	let commandPrefix="wrapENSDFLines-";
+	let extensionID="ensdf";
+	let commandPrefix="wrap80";
 	let namePrefix=extensionID+"."+commandPrefix;
 
 	//command name=namePrefix+option must be the same as the corresponding "commands"
