@@ -1,7 +1,6 @@
 # ENSDF Auto Wrap
 
-ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically reformat comment lines in dataset files according to the 80-column ENSDF standard.
-
+ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically reformat comment lines in dataset files according to the 80-column ENSDF standard. It wraps long lines while preserving a fixed 9-character prefix and inserting proper continuation prefixes (e.g., " 35P  c  ", " 35P 2c  ", " 35P 3c  ", etc.).
 
 ## Installation
 
@@ -15,20 +14,24 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 
 ## Usage
 
-1. **Open your ENSDF Dataset File:**  
+1. **Open Your ENSDF Dataset File:**  
    Ensure that each comment line in your file starts with a fixed 9-character prefix formatted as follows:
    - **Column 1:** space  
    - **Columns 2–4:** Nuclide identifier (e.g., "35P")  
    - **Column 5:** space  
    - **Column 6:** space  
    - **Column 7:** record type (e.g., "c")  
-   - **Columns 8–9:** spaces
+   - **Columns 8–9:** spaces  
+   The comment text begins at column 10.
 
 2. **Wrap the Text:**  
-   - Press **Ctrl+Shift+P** to open the Command Palette.
-   - Run the command **"ENSDF: Wrap Text to 80 Columns"** to wrap all text in the file.
-   - Run the command **"ENSDF: Wrap Text to 80 Columns (selected)"** to wrap only the selected text.
-   - The extension will reformat the file so that no line exceeds 80 columns, inserting continuation prefixes (e.g., " 35P 2c  ", " 35P 3c  ", etc.) as needed.
+   - **Using the Status Bar:**  
+     A status-bar item labeled **"Wrap ENSDF"** appears at the left of the status bar. Clicking it will run the wrapping command. If no text is selected, it wraps the entire file; if text is selected, it wraps just the selection.
+   - **Toggle Auto Wrap When Typing:**  
+   - A command titled **"Toggle Auto Wrap ENSDF"** is provided to enable or disable auto-wrap while typing.
+   - By default, auto-wrap is **disabled**.
+   - When toggled **on**, the status-bar item changes to **"Auto-wrap ON"**, and the extension will automatically reformat lines as you type.
+   - Click the status-bar item or run the **"Toggle Auto Wrap ENSDF"** command again to disable auto-wrap; the status-bar text will revert to **"Wrap ENSDF"**.
 
 ## Contributing & Feedback
 
