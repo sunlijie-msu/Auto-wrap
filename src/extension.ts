@@ -155,8 +155,20 @@ function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean): string 
 
         let s1 = "", s2 = "";
         if (c1 === "C" || (c1 === "D" && s.length === 1)) { // comment and document lines, "CL", "D"
-            s1 = " " + s.charAt(0);
-            s2 = s.substring(1);
+			if(c1==="C"&&c2==="C"){
+				if(AsIs){
+					s1 = s.substring(0,2);;
+					s2 = s.substring(2);
+				}else{
+					s1 = " " + s.charAt(1);
+					s2 = s.substring(2);
+				}
+
+			}else{
+				s1 = " " + s.charAt(0);
+				s2 = s.substring(1);
+			}
+
         } else if (c2 === "C" || (c2 === "D" && s.length === 2)) { // "2CL", "2D"
 			if(!AsIs){
 				s1 = " " + s.charAt(1);
@@ -213,8 +225,9 @@ function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean): string 
 		}else{
             s2 = s2.padEnd(2);
 		}
+		//console.log("1 NUCID="+NUCID+"$ type="+type+"$")+" s1="+s1+" s2="+s2;
         type = s1 + s2.toUpperCase();
-		//console.log("NUCID="+NUCID+"$ type="+type+"$");
+		//console.log("2 NUCID="+NUCID+"$ type="+type+"$"+" s1="+s1+" "+AsIs);
     }
 
     return `${NUCID.padStart(5)}${type.padStart(4)}`;
@@ -244,13 +257,13 @@ function parseNUCIDandComType(line: string): string[] {
 	
 	if(isA(AS)){
 		let count=0;
-		while(isLetter(s.charAt(i)) && count<=2){
+		while(isLetter(s.charAt(i)) && count<2){
 			EN+=s.charAt(i);
 			count++;
 			i++;
 		}
 
-		//console.log(EN+" isEn="+isElementSymbol(EN)+" isNUCID="+isNUCID(AS+EN));
+		//console.log(EN+" isEn="+isElementSymbol(EN)+" isNUCID="+isNUCID(AS+EN)+" line="+line);
 		
 		if(isElementSymbol(EN) && isNUCID(AS+EN)){
 			let NUCID=AS+EN;
@@ -520,7 +533,7 @@ function getNextPrefix(currPrefix: string): string {
 		count=parseInt(c1);
 		count=count+1;
 	}else if(isLetter(c1)){
-		count=c1.charCodeAt(0)+1;
+		count=c1.charCodeAt(0)-'a'.charCodeAt(0)+10+1;
 	}else{
 		return currPrefix;
 	}
@@ -530,6 +543,7 @@ function getNextPrefix(currPrefix: string): string {
         label = count.toString() + recordType;
     } else {
         label = String.fromCharCode('a'.charCodeAt(0) + (count - 10)) + recordType;
+		//console.log("label="+label+" count="+count);
     }
     // New prefix: fixed (6 chars) + label (2 chars) + space or particle-type (1 char) = 9 characters.
     return NUCID + label ;
@@ -599,6 +613,7 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 			const contPrefix = getNextPrefix(prevPrefix);
 			line=contPrefix +sep+wrappedParts[i];
 			newLines.push(line.padEnd(80));
+			//console.log("i="+i+" part="+wrappedParts[i]+" currPrefix="+contPrefix+" prevFix="+prevPrefix);
 			prevPrefix=contPrefix;
 		}	
 	}
@@ -676,7 +691,8 @@ function wrapENSDFText(text:string): string[] {
 			newLines.push("");
 			continue;
 		}
-		//console.log("1###"+line +" NUCID="+NUCID+" "+line.startsWith(NUCID));
+		//console.log("1@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID));
+
 		if(!line.toUpperCase().trim().startsWith(NUCID)){
 			if(tempText.length>0){
 				tempText=tempText.trimEnd()+" "+line.trim();
@@ -698,6 +714,7 @@ function wrapENSDFText(text:string): string[] {
 		let out=parseNUCIDandComType(line);
 		  
 		//console.log(out.length);
+		//console.log("2@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID)+" "+out.length);
 
 		//if(c2!=="C"&&c2!=="D"){
 		if(out===null || out.length===0){
@@ -714,9 +731,12 @@ function wrapENSDFText(text:string): string[] {
 		let comBody=out[2];
 		let prefix=out[3];
 
+		//console.log("###"+line +" NUCID="+NUCID+" comType="+comType+" prefix="+prefix+"$");
+
 		//console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
 		//if(c1===' '){
-		if(/^[CD]/.test(comType.toUpperCase()) || (count===0&&/^[[2-9A-Z][CD]/.test(comType.toUpperCase()) )){
+		let typeS=comType.toUpperCase();
+		if( (/^[CD]/.test(typeS)&&typeS!=="CC") || (count===0&&/^[[2-9A-Z][CD]/.test(typeS) )){
 			if(tempText.length>0){
 				wrapAndaddToNewLines(tempText,NUCID,newLines);
 			}
@@ -841,179 +861,253 @@ function getEOL(){
 }
 
 const MAX_COLUMN = 80; // Set your maximum column number here
-
+let hasStarted=false;
 /**
  * 
  * wrap the current comment text only when the text starts with a NUCID and a valid comment type
  */
 function autoWrapCurrentComment() {
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
 
+    const editor = vscode.window.activeTextEditor;
+
+    if (editor) {
+  
         const doc = editor.document;
         const position = editor.selection.active;//###note this is the position of the cursor before change
-        const line = doc.lineAt(position.line);
-        const text = line.text;
+        let line = doc.lineAt(position.line);
+        let text = line.text;
 
-		let nextLine=doc.lineAt(position.line+1);
+		let nextLine=null;
+		if(position.line<doc.lineCount-1){
+			nextLine=doc.lineAt(position.line+1);
+		}
+		
 		let remainingComText="";//remaining text of the same comment
+
+		let out=parseNUCIDandComType(line.text);
+
+		if(out===null || out.length===0){
+			return;
+		}
+
+		//let NUCID=out[0];
+		//let lineType=out[1];
+		//let comBody=out[2];
+		let prefix=out[3];
 
 		let selection=new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0));
 		
+		//console.log(text);
+
+		let isEndLine=false;
 		if(nextLine===null){
 			remainingComText="";
+			isEndLine=true;
 		}else{
 			let n=position.line+1;
 			let startPos=position;
 
-			let lastLine=doc.lineAt(n);//this is the first line of the remaining comment
-			if(n<doc.lineCount){
-				startPos=lastLine.range.start;
-			}
-			
+			let lastComLine=null;//this is the first line of the remaining comment
+			let count=0;
 			while(n<doc.lineCount){
-				let s=doc.lineAt(n).text;
+				let line=doc.lineAt(n);
+				let s=line.text;
 				if(s.trim().length===0 || s.charAt(5)===' ' || s.charAt(6)===' '){
 					break;
 				}
+				if(count===0){
+					startPos=line.range.start;
+				}
+				if(s.endsWith("\\")){
+					s=s.substring(0,s.length-1).trim();
+				}
 				remainingComText+=s+"\n";
-				lastLine=doc.lineAt(n);
+				lastComLine=line;
 				n++;
+				count++;
 			}
 
-			let endPos=lastLine.range.end;
+			let endPos=position;
+			if(lastComLine){
+				endPos=lastComLine.range.end;
+			}
+
+			//console.log(startPos.line+"  "+startPos.character+" end="+endPos.line+"  "+endPos.character);
 			selection=new vscode.Selection(startPos,endPos);
 		}
 
 		//console.log("1 curr line="+line.text+" **cursor="+position.character+" remainingCom="+remainingComText+" selection="+doc.getText(selection));
-		//console.log("     text length="+text.length+"##"+text.charAt(80)+"##"+text.trim().length);
+		//console.log(" hasStarted="+hasStarted+"   text length="+text.length+"##"+text.charAt(80)+"##"+text.trim());
 		//console.log("#  "+position.line+"  "+position.character);
 
 		//Note position.character is the column# (zero-based) before the change (or typing)
 		if (position.character >= MAX_COLUMN || 
-			(text.length>=MAX_COLUMN&&position.character===MAX_COLUMN-1)&&text.substring(MAX_COLUMN).trim().length===0 ) {
+			(text.length>=MAX_COLUMN&&position.character===MAX_COLUMN-1&&text.substring(MAX_COLUMN).trim().length===0) ) {
         //if (text.length >= MAX_COLUMN || (text.length===MAX_COLUMN&&position.character===MAX_COLUMN) ) {
 			const char = text[MAX_COLUMN - 1];
 			
-            if (char !== ' ' && char !== '.') {
-                let wrapIndex = MAX_COLUMN - 1;
+			let wrapIndex = MAX_COLUMN - 1;
+            if (char !== ' ' && char !== '.') {                
                 while (wrapIndex > 0 && text[wrapIndex] !== ' ') {
                     wrapIndex--;
                 }
+			}
+			let remainingLineText ="";
+			let keptLineText ="";
+
+            if (wrapIndex>0&&wrapIndex>40) {
+				remainingLineText = text.substring(wrapIndex + 1).trimStart();
+				keptLineText = text.substring(0, wrapIndex+1).trimEnd();;
+			}else{
+				wrapIndex=MAX_COLUMN-1;
+				remainingLineText = text.substring(wrapIndex);
+				keptLineText = text.substring(0, wrapIndex);
+				if(remainingLineText.startsWith("\\")){
+					remainingLineText=remainingLineText.substring(1);
+				}
 				
-                if (wrapIndex > 0) {
-					
-                    const remainingLineText = text.substring(wrapIndex + 1);
-                    const keptLineText = text.substring(0, wrapIndex);
-    
-					let out=parseNUCIDandComType(line.text);
+				if(remainingLineText.trim().length>0 && !keptLineText.endsWith("\\")){
+					keptLineText+="\\";
+					//console.log("##"+keptLineText+"##");
+				}
 
-					//console.log("2 $$$ keptLineText="+keptLineText+"$ remainingLineText="+remainingLineText+"$ out="+out.length);
+			}				
 
-					if(out===null || out.length===0){
-						return;
-					}
+			//console.log(line.text+"  old="+prefix+"$");                    
+			prefix=getNextPrefix(prefix);
+			//console.log(line.text+"  new="+prefix+"$");
 
-					//let NUCID=out[0];
-					//let lineType=out[1];
-					//let comBody=out[2];
-					let prefix=out[3];
-					//console.log(line.text+"  old="+prefix+"$");
-                    prefix=getNextPrefix(prefix);
-					//console.log(line.text+"  new="+prefix+"$");
+			//console.log("3 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" prefix="+prefix+"##"+remainingComText.length);
 
-					//console.log("3 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" prefix="+prefix+"##");
+            let newLineText = prefix + remainingLineText.trim();
+			let toReplace=false;
 
-                    let newLineText = prefix + remainingLineText.trim();
-					let toReplace=false;
+			let wrappedRemainingText="";//remainling part of curr line+remaining comment
+			if(remainingLineText.trim().length===0 && text.charAt(position.character)===' '){					
+				newLineText="";
+			}else if(remainingComText.length>0 || remainingLineText.trim().length>0){
+				let s="";
+				if(remainingComText.length>0){
+					s=remainingComText;
+				}
+				if(remainingLineText.trim().length>0){
+					if(s.length>0){			
+						s=newLineText+"\n"+s;
+					}else{
+						s=newLineText;
+					}					
+				}
+				//console.log("s="+s+"$");
+				//console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" s="+s+"##newLine="+newLineText+"#");
 
-					let wrappedRemainingText="";//remainling part of curr line+remaining comment
-					if(remainingLineText.trim().length===0 && text.charAt(position.character)===' '){
-						newLineText="";
-					}else if(remainingComText.length>0){
-						let s=remainingComText;	
-						if(newLineText.length>0){
-							s=newLineText+"\n"+s;
-						}
-						//console.log("s="+s+"$");
-						//console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" s="+s+"##newLine="+newLineText+"#");
+				wrappedRemainingText=wrapENSDFTextToNewText(s,getEOL());	
+				
+				//console.log("5  wrappedRemainingText="+wrappedRemainingText+"#");
 
-						wrappedRemainingText=wrapENSDFTextToNewText(s,getEOL());	
-						
-						//console.log("5  wrappedRemainingText="+wrappedRemainingText+"#");
+				toReplace=true;	
+				
+			}
 
-						toReplace=true;	
-					}
-					//console.log("5.4 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+			hasStarted=true;
 
-                    editor.edit(editBuilder => {
-                        editBuilder.replace(line.range, keptLineText);						
-						if(toReplace && !selection.isEmpty){
-							editBuilder.replace(selection,wrappedRemainingText);
+			editor.edit(editBuilder => {   
+				//let tempSelection=editor.selection;
+				//editBuilder.replace(tempSelection, "");
+
+				//console.log(line.text+" $"+line.range.start.character+" to "+line.range.end.character+" hasStarted="+hasStarted);   
+
+				editBuilder.replace(line.range, keptLineText);	
+
+				//console.log(" keptLine="+keptLineText);	
+				//console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);	
+				/*								
+				if(toReplace && !selection.isEmpty){			
+
+					editBuilder.replace(selection,wrappedRemainingText);	
+
+					console.log("5.5 new text=\n"+wrappedRemainingText+" selection=\n"+doc.getText(selection));			
+					console.log(" start="+selection.start.line+" col="+selection.start.character+" end="+selection.end.line+" col="+selection.end.character);
 							
-							//console.log("5.5 new text="+wrappedRemainingText+" selection="+doc.getText(selection));
+				}else{							
+					if(newLineText.length>0){								
+						editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText + '\n');								
+					} 							
+				}
 	
+				console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+				console.log(doc.getText());
+						
+				let resetCursorPos=false;
+				if(position.character>MAX_COLUMN-1){
+					resetCursorPos=true;
+				}else if(wrappedRemainingText.length>0){
+					resetCursorPos=true;
+				}else if(newLineText.length>0){
+					resetCursorPos=true;
+				}
+							
+							
+				if(resetCursorPos){
+					let next=position.line;		
+					if(next<doc.lineCount){
+						next+=1;
+					}
+					let nextLine=doc.lineAt(next);
+					const newPosition = new vscode.Position(next, Math.min(9,nextLine.text.length-1));
+					editor.selection = new vscode.Selection(newPosition, newPosition);
+					editor.revealRange(new vscode.Range(newPosition, newPosition));
+								
+					console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+				}
+					*/			
+			}).then(() => {
+				editor.edit(editBuilder => {
+					let resetCursorPos = false;
+                    if (position.character > MAX_COLUMN - 1) {
+                        resetCursorPos = true;
+                    } else if (wrappedRemainingText.length > 0) {
+                        resetCursorPos = true;
+                    } else if (newLineText.length > 0) {
+                        resetCursorPos = true;
+                    }
+					const tempPosition = new vscode.Position(position.line, 0);
+					editor.selection = new vscode.Selection(tempPosition, tempPosition);
+
+                    if (toReplace ) {
+						if(!selection.isEmpty){
+							editBuilder.replace(selection, wrappedRemainingText);
 						}else{
-							if(newLineText.length>0){
-								editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText + '\n');
-							} 
+							editBuilder.insert(new vscode.Position(position.line + 1, 0), wrappedRemainingText + '\n');
 						}
 
-						//console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
-						
-						let resetCursorPos=false;
-						if(position.character>MAX_COLUMN-1){
-							resetCursorPos=true;
-						}else if(wrappedRemainingText.length>0){
-							resetCursorPos=true;
-						}else if(newLineText.length>0){
-							resetCursorPos=true;
-						}
-                        
-						if(resetCursorPos){
-							let next=position.line;		
-							if(next<doc.lineCount){
-								next+=1;
-							}
-							let nextLine=doc.lineAt(next);
-							const newPosition = new vscode.Position(next, Math.min(9,nextLine.text.length-1));
-							editor.selection = new vscode.Selection(newPosition, newPosition);
-							editor.revealRange(new vscode.Range(newPosition, newPosition));
+						//console.log("hello1 "+position.line+"  "+doc.lineCount+"  "+wrappedRemainingText+"   "+selection.isEmpty+" $"+doc.getText(selection)+"$");
+						//console.log(selection.start.line+" "+selection.start.character+"  end="+selection.end.line+"  "+selection.end.character);
+                    } else {
+                        if (newLineText.length > 0) {
+                            editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText + '\n');
+                        }
+                    }
 
-							//console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
-						}
-                    }).then(() => {
-						/*
-						console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
-						
-						let resetCursorPos=false;
-						if(position.character>MAX_COLUMN-1){
-							resetCursorPos=true;
-						}else if(wrappedRemainingText.length>0){
-							resetCursorPos=true;
-						}else if(newLineText.length>0){
-							resetCursorPos=true;
-						}
-                        
-						if(resetCursorPos){
-							let next=position.line;		
-							if(next<doc.lineCount){
-								next+=1;
-							}
-							let nextLine=doc.lineAt(next);
-							const newPosition = new vscode.Position(next, Math.min(9,nextLine.text.length-1));
-							editor.selection = new vscode.Selection(newPosition, newPosition);
-							editor.revealRange(new vscode.Range(newPosition, newPosition));
-							console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
-						}
-					    */
+                    if (resetCursorPos) {
+                        let next = position.line;
+                        if (next < doc.lineCount-1) {
+                            next += 1;
+                        }
+                        let nextLine = doc.lineAt(next);
+                        const newPosition = new vscode.Position(next, Math.min(9, nextLine.text.length - 1));
+                        editor.selection = new vscode.Selection(newPosition, newPosition);
+                        editor.revealRange(new vscode.Range(newPosition, newPosition));
+                    }
+					//console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+					hasStarted=false;
+					
+                });
+			});			   			
+		}
 
-                    });
-                }
-            }
-        }
-    }
+	}			
 }
+	
 
 let autoWrap=false;
 
@@ -1032,22 +1126,28 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable1);
 	context.subscriptions.push(disposable2);
     
+    autoWrap=false;
+	hasStarted=false;
 
 	//if(autoWrap){
 		//getCursorPosition();
 		const autoWrapDisposable = vscode.workspace.onDidChangeTextDocument(event => {
 			const editor = vscode.window.activeTextEditor;
 
+			//if (editor) {
+			//	console.log(autoWrap+"  "+(event.document === editor.document)+"  "+editor.selection.isEmpty);
+			//}
+			
 			if (autoWrap && editor && event.document === editor.document) {
 				const position = editor.selection.active;//Note this is the initial cursor position before change
 				const document = editor.document;
 				const line = document.lineAt(position.line);
 				const text = line.text;
-				//console.log("@  "+position.line+"  "+position.character);
+				//console.log("@ hasStarted= "+hasStarted+"  line="+ position.line+"  "+position.character);
 				//vscode.window.showInformationMessage(`#Cursor Position - Line: ${position.line}, Character: ${position.character}`);
 
 				//if (position.character >= MAX_COLUMN-1 || text.length>MAX_COLUMN) {//trigger auto-wrap when cursor>80 or line length>80
-				if (position.character >= MAX_COLUMN-1 && editor.selection.isEmpty) {//trigger auto-wrap only when cursor goes beyond column 80
+				if (!hasStarted && position.character >= MAX_COLUMN-1 && editor.selection.isEmpty) {//trigger auto-wrap only when cursor goes beyond column 80
 					autoWrapCurrentComment();
 				}
 			}
