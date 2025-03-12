@@ -886,6 +886,7 @@ function autoWrapCurrentComment() {
             (text.length >= MAX_COLUMN && position.character === MAX_COLUMN - 1 && text.substring(MAX_COLUMN).trim().length === 0)) {
             //if (text.length >= MAX_COLUMN || (text.length===MAX_COLUMN&&position.character===MAX_COLUMN) ) {
             const char = text[MAX_COLUMN - 1];
+            let resetCursorOffset = 0;
             let wrapIndex = MAX_COLUMN - 1;
             if (char !== ' ' && char !== '.') {
                 while (wrapIndex > 0 && text[wrapIndex] !== ' ') {
@@ -898,6 +899,7 @@ function autoWrapCurrentComment() {
                 remainingLineText = text.substring(wrapIndex + 1).trimStart();
                 keptLineText = text.substring(0, wrapIndex + 1).trimEnd();
                 ;
+                resetCursorOffset = (MAX_COLUMN - 1) - wrapIndex;
             }
             else {
                 wrapIndex = MAX_COLUMN - 1;
@@ -937,7 +939,10 @@ function autoWrapCurrentComment() {
                 //console.log("s="+s+"$");
                 //console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" s="+s+"##newLine="+newLineText+"#");
                 wrappedRemainingText = wrapENSDFTextToNewText(s, getEOL());
-                //console.log("5  wrappedRemainingText="+wrappedRemainingText+"#");
+                //if(wrappedRemainingText.endsWith(getEOL())){
+                wrappedRemainingText = wrappedRemainingText.substring(0, wrappedRemainingText.length - 2);
+                //}
+                //console.log("5  wrappedRemainingText="+wrappedRemainingText+"#"+wrappedRemainingText.endsWith(getEOL()));
                 toReplace = true;
             }
             hasStarted = true;
@@ -945,7 +950,7 @@ function autoWrapCurrentComment() {
                 //let tempSelection=editor.selection;
                 //editBuilder.replace(tempSelection, "");
                 //console.log(line.text+" $"+line.range.start.character+" to "+line.range.end.character+" hasStarted="+hasStarted);   
-                editBuilder.replace(line.range, keptLineText);
+                editBuilder.replace(line.range, keptLineText.padEnd(80));
                 //console.log(" keptLine="+keptLineText);	
                 //console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);	
                 /*
@@ -1007,34 +1012,65 @@ function autoWrapCurrentComment() {
                             editBuilder.replace(selection, wrappedRemainingText);
                         }
                         else {
-                            editBuilder.insert(new vscode.Position(position.line + 1, 0), wrappedRemainingText + '\n');
+                            editBuilder.insert(new vscode.Position(position.line + 1, 0), wrappedRemainingText.trimEnd().padEnd(80) + "\n");
                         }
                         //console.log("hello1 "+position.line+"  "+doc.lineCount+"  "+wrappedRemainingText+"   "+selection.isEmpty+" $"+doc.getText(selection)+"$");
                         //console.log(selection.start.line+" "+selection.start.character+"  end="+selection.end.line+"  "+selection.end.character);
                     }
                     else {
                         if (newLineText.length > 0) {
-                            editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText + '\n');
+                            editBuilder.insert(new vscode.Position(position.line + 1, 0), newLineText.trimEnd().padEnd(80) + "\n");
                         }
                     }
+                    /*
+                    if (resetCursorPos) {
+                        let next = position.line;
+                        if (next < doc.lineCount-1 && !selection.isEmpty) {
+                            next += 1;
+                        }
+                        //console.log(resetCursorOffset);
+
+                        let nextLine = doc.lineAt(next);
+                        const newPosition = new vscode.Position(next, Math.min(9+resetCursorOffset,79));
+                        editor.selection = new vscode.Selection(newPosition, newPosition);
+                        editor.revealRange(new vscode.Range(newPosition, newPosition));
+
+                        console.log("  next line="+nextLine.text);
+                    }
+                    */
+                    //console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
+                    hasStarted = false;
+                }).then(() => {
+                    let resetCursorPos = false;
+                    if (position.character >= MAX_COLUMN - 1) {
+                        resetCursorPos = true;
+                    }
+                    else if (wrappedRemainingText.length > 0) {
+                        resetCursorPos = true;
+                    }
+                    else if (newLineText.length > 0) {
+                        resetCursorPos = true;
+                    }
+                    //console.log(resetCursorOffset+"  "+resetCursorPos);
                     if (resetCursorPos) {
                         let next = position.line;
                         if (next < doc.lineCount - 1) {
                             next += 1;
                         }
-                        let nextLine = doc.lineAt(next);
-                        const newPosition = new vscode.Position(next, Math.min(9, nextLine.text.length - 1));
+                        //console.log(resetCursorOffset);
+                        //let nextLine = doc.lineAt(next);
+                        const newPosition = new vscode.Position(next, Math.min(9 + resetCursorOffset, 79));
                         editor.selection = new vscode.Selection(newPosition, newPosition);
                         editor.revealRange(new vscode.Range(newPosition, newPosition));
+                        //console.log("  next line="+nextLine.text);
                     }
-                    //console.log("6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);
-                    hasStarted = false;
                 });
             });
         }
     }
 }
 let autoWrap = false;
+let lastDocumentVersion = -1;
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 function activate(context) {
@@ -1061,6 +1097,12 @@ function activate(context) {
             const document = editor.document;
             const line = document.lineAt(position.line);
             const text = line.text;
+            // Check if the change is due to an undo operation
+            if (event.document.version <= lastDocumentVersion) {
+                lastDocumentVersion = event.document.version;
+                return;
+            }
+            lastDocumentVersion = event.document.version;
             //console.log("@ hasStarted= "+hasStarted+"  line="+ position.line+"  "+position.character);
             //vscode.window.showInformationMessage(`#Cursor Position - Line: ${position.line}, Character: ${position.character}`);
             //if (position.character >= MAX_COLUMN-1 || text.length>MAX_COLUMN) {//trigger auto-wrap when cursor>80 or line length>80
