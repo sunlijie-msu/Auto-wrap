@@ -25,13 +25,17 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
    The comment text begins at column 10.
 
 2. **Wrap the Text:**  
+   - Run the command **"ENSDF: Wrap Text to 80 Columns"** to wrap all text in the file.
+   - Run the command **"ENSDF: Wrap Text to 80 Columns (selected)"** to wrap only the selected text.
    - **Using the Status Bar:**  
      A status-bar item labeled **"Wrap ENSDF"** appears at the left of the status bar. Clicking it will run the wrapping command. If no text is selected, it wraps the entire file; if text is selected, it wraps just the selection.
-   - **Toggle Auto Wrap When Typing:**  
-   - A command titled **"Toggle Auto Wrap ENSDF"** is provided to enable or disable auto-wrap while typing.
+
+3. **Toggle Auto Wrap:**  
+   - Run the command **"Toggle Auto Wrap ENSDF"** to enable or disable auto-wrap while typing.
    - By default, auto-wrap is **disabled**.
-   - When toggled **on**, the status-bar item changes to **"Auto-wrap ON"**, and the extension will automatically reformat lines as you type.
-   - Click the status-bar item or run the **"Toggle Auto Wrap ENSDF"** command again to disable auto-wrap; the status-bar text will revert to **"Wrap ENSDF"**.
+   - When enabled, the status bar item changes to **"Auto-wrap ON"** and the extension automatically reformats lines as you type.
+   - To disable auto-wrap, click the status-bar item or run the command again; the status-bar text will revert to **"Wrap ENSDF"**.
+
 
 ## Contributing & Feedback
 
