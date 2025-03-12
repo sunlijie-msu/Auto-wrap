@@ -890,7 +890,7 @@ function autoWrapCurrentComment() {
 			return;
 		}
 
-		//let NUCID=out[0];
+		let NUCID=out[0];
 		//let lineType=out[1];
 		//let comBody=out[2];
 		let prefix=out[3];
@@ -912,7 +912,7 @@ function autoWrapCurrentComment() {
 			while(n<doc.lineCount){
 				let line=doc.lineAt(n);
 				let s=line.text;
-				if(s.trim().length===0 || s.charAt(5)===' ' || s.charAt(6)===' '){
+				if(s.trim().length===0 || (s.charAt(5)===' '||s.charAt(6)===' ')&&s.startsWith(NUCID) ){
 					break;
 				}
 				if(count===0){
@@ -959,8 +959,13 @@ function autoWrapCurrentComment() {
 
             if (wrapIndex>0&&wrapIndex>40) {
 				remainingLineText = text.substring(wrapIndex + 1).trimStart();
-				keptLineText = text.substring(0, wrapIndex+1).trimEnd();;
-				resetCursorOffset=(MAX_COLUMN-1)-wrapIndex;
+				keptLineText = text.substring(0, wrapIndex+1).trimEnd();
+				if(wrapIndex===MAX_COLUMN-1){
+					resetCursorOffset=text.substring(wrapIndex,position.character+1).trim().length;
+				}else{
+					resetCursorOffset=(MAX_COLUMN-1)-wrapIndex;
+				}
+
 			}else{
 				wrapIndex=MAX_COLUMN-1;
 				remainingLineText = text.substring(wrapIndex);
@@ -976,9 +981,13 @@ function autoWrapCurrentComment() {
 
 			}				
 
+			//console.log("2 curr line="+line.text+" **cursor="+position.character+" remainingCom="+remainingComText+" selection="+doc.getText(selection));
+            //console.log("  remainingLineText="+remainingLineText+" keptLine="+keptLineText);
+
 			//console.log(line.text+"  old="+prefix+"$");                    
 			prefix=getNextPrefix(prefix);
 			//console.log(line.text+"  new="+prefix+"$");
+
 
 			//console.log("3 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" prefix="+prefix+"##"+remainingComText.length);
 
@@ -1001,15 +1010,15 @@ function autoWrapCurrentComment() {
 					}					
 				}
 				//console.log("s="+s+"$");
-				//console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##"+" s="+s+"##newLine="+newLineText+"#");
+				//console.log("4 **cursor="+position.character+" remainingLine="+remainingLineText+"##newLine="+newLineText+"#");
 
 				wrappedRemainingText=wrapENSDFTextToNewText(s,getEOL());	
-				//if(wrappedRemainingText.endsWith(getEOL())){
-					wrappedRemainingText=wrappedRemainingText.substring(0,wrappedRemainingText.length-2);
+				//if(wrappedRemainingText.c){
+					wrappedRemainingText=wrappedRemainingText.trimEnd();
 				//}
-				
+		        //console.log("    keptLine="+keptLineText+"#");		
 				//console.log("5  wrappedRemainingText="+wrappedRemainingText+"#"+wrappedRemainingText.endsWith(getEOL()));
-
+        
 				toReplace=true;	
 				
 			}
@@ -1020,9 +1029,10 @@ function autoWrapCurrentComment() {
 				//let tempSelection=editor.selection;
 				//editBuilder.replace(tempSelection, "");
 
-				//console.log(line.text+" $"+line.range.start.character+" to "+line.range.end.character+" hasStarted="+hasStarted);   
+				//ßconsole.log(line.text+" $"+line.range.start.character+" to "+line.range.end.character+" hasStarted="+hasStarted);   
 
 				editBuilder.replace(line.range, keptLineText.padEnd(80));	
+							
 
 				//console.log(" keptLine="+keptLineText);	
 				//console.log("5.6 new line="+newLineText+"#length="+newLineText.length+" new cursor pos="+editor.selection.active.character);	
@@ -1130,7 +1140,7 @@ function autoWrapCurrentComment() {
                         if (next < doc.lineCount-1) {
                             next += 1;
                         }
-						//console.log(resetCursorOffset);
+						//console.log(text+"  "+resetCursorOffset);
 
                         //let nextLine = doc.lineAt(next);
                         const newPosition = new vscode.Position(next, Math.min(9+resetCursorOffset,79));
@@ -1191,6 +1201,27 @@ export function activate(context: vscode.ExtensionContext) {
 					return;        
 				}
 				lastDocumentVersion = event.document.version;	
+
+				if(event.contentChanges.length===0 || position.character<MAX_COLUMN-1){
+					return;
+				}
+
+				//console.log("########"+event.contentChanges.length+" cursor="+position.character );
+				//for(let i=0;i<event.contentChanges.length;i++){
+				//	console.log("$$$$"+event.contentChanges[i].text+"$$$$");
+				//}
+
+                const change = event.contentChanges[0];
+
+                if (change.text === '\n' || change.text === '\r\n') {
+                    const lineBeforeEnter = document.lineAt(change.range.start.line).text;
+                    //console.log(`Line before Enter: ${lineBeforeEnter}` + "  " + change.range.start.line);
+                    //console.log(" original line=" + text + " #" + position.line);
+                } else if (change.text.length > 1 || change.text.includes('\n')) {
+                    // Handle paste operation
+                    //console.log("Paste operation detected");
+                    // You can add your handling logic for paste operation here
+                }
 
 				//console.log("@ hasStarted= "+hasStarted+"  line="+ position.line+"  "+position.character);
 				//vscode.window.showInformationMessage(`#Cursor Position - Line: ${position.line}, Character: ${position.character}`);
