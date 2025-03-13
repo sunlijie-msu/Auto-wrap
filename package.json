@@ -22,6 +22,10 @@
       {
         "command": "ensdf.toggleAutoWrap",
         "title": "Toggle Auto Wrap ENSDF"
+      },
+      {
+        "command": "ensdf.extractNSRKeynumber",
+        "title": "Extract NSR Keynumber"
       }
     ],
     "keybindings": [
