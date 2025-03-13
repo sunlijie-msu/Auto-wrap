@@ -1,6 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 const elementSymbols = [
     "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
@@ -860,6 +863,61 @@ function getEOL(){
 	return "\n";
 }
 
+function extractNSRKeynumbersFromEditor() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No active editor found.');
+        return;
+    }
+
+    const document = editor.document;
+    const keynumberPattern = /\b\d{4}[a-zA-Z]{2}([a-zA-Z]{2}|[0-9]{2})\b/g;
+    const extractedKeynumbers = new Set<string>();
+
+	const doc = editor.document;
+    let text=doc.getText();
+
+	let selection = editor.selection;
+
+	if(!selection.isEmpty){
+		text=doc.getText(selection);
+	}
+
+	const lines = text.split(/\r?\n/);
+
+	for (const line of lines) {
+        if (line.length > 6 && (line[6] !== ' '|| line.substring(7,9)==='  ') ) {
+            const matches = line.match(keynumberPattern);
+            if (matches) {
+                matches.forEach(match => {
+					if(!extractedKeynumbers.has(match.toUpperCase()) ){					
+						extractedKeynumbers.add(match.toUpperCase());
+					}
+				});
+            }
+        }
+    }
+
+    const keynumbersArray = Array.from(extractedKeynumbers).sort();
+    //vscode.window.showInformationMessage(`Extracted NSR Keynumbers:\n${keynumbersArray.join('\n')}`);
+
+	const keynumbersString = keynumbersArray.join('\n');
+
+    // Create a temporary file and write the keynumbers to it
+    const tempFilePath = path.join(os.tmpdir(), 'extracted_keynumbers.txt');
+    fs.writeFile(tempFilePath, keynumbersString, (err) => {
+        if (err) {
+            vscode.window.showErrorMessage(`Error writing to temporary file: ${err.message}`);
+            return;
+        }
+
+        // Open the temporary file in the editor
+        vscode.workspace.openTextDocument(tempFilePath).then(doc => {
+            vscode.window.showTextDocument(doc);
+        });
+    });
+}
+
 const MAX_COLUMN = 80; // Set your maximum column number here
 let hasStarted=false;
 /**
@@ -1322,7 +1380,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Initial update of the line and column numbers status bar item
     updateLineColumnStatusBarItem();
 
-
+    // Register the extractNSRKeynumbers command
+    let disposable3 = vscode.commands.registerCommand(extensionID+'.extractNSRKeynumber', () => {
+        extractNSRKeynumbersFromEditor();
+    });
+    context.subscriptions.push(disposable3);
 }
 
 // This method is called when your extension is deactivated
