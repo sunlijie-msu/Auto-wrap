@@ -2,40 +2,15 @@
   "name": "ensdf-auto-wrap",
   "displayName": "ENSDF Auto Wrap",
   "description": "Auto-wrap text to 80 columns for ENSDF formatting",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.75.0"
   },
-  "activationEvents": [
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "ensdf.wrap80all",
-        "title": "ENSDF: Wrap Text to 80 Columns"
-      },
-      {
-        "command": "ensdf.wrap80selected",
-        "title": "ENSDF: Wrap Text to 80 Columns (selected)"
-      },
-      {
-        "command": "ensdf.toggleAutoWrap",
-        "title": "Toggle Auto Wrap ENSDF"
-      },
-      {
-        "command": "ensdf.extractNSRKeynumber",
-        "title": "Extract NSR Keynumber"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "ensdf.wrap80",
-        "key": "ctrl+shift+w",
-        "mac": "cmd+shift+w",
-        "when": "editorTextFocus"
-      }
-    ]
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sunlijie-msu/Auto-wrap.git"
   },
   "scripts": {
     "vscode:prepublish": "tsc -p ./",
@@ -45,6 +20,32 @@
     "@types/vscode": "^1.75.0",
     "@types/node": "20.x",
     "typescript": "^4.8.4",
-    "vscode": "^1.1.37"
+    "@types/node": "20.x"
+  },
+  "activationEvents": [
+    "onCommand:ensdf.wrap80",
+    "onCommand:ensdf.wrap80selected",
+    "onCommand:ensdf.toggleAutoWrap",
+    "onCommand:ensdf.extractNSRKeynumber"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "ensdf.wrap80",
+        "title": "Wrap all ENSDF lines to 80 Columns"
+      },
+      {
+        "command": "ensdf.wrap80selected",
+        "title": "Wrap selected ENSDF lines to 80 columns"
+      },
+      {
+        "command": "ensdf.toggleAutoWrap",
+        "title": "Toggle Auto Wrap ENSDF"
+      },
+      {
+        "command": "ensdf.extractNSRKeynumber",
+        "title": "Extract NSR Keynumber"
+      }
+    ]
   }
 }
