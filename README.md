@@ -36,6 +36,9 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
    - When enabled, the status bar item changes to **"Auto-wrap ON"** and the extension automatically reformats lines as you type.
    - To disable auto-wrap, click the status-bar item or run the command again; the status-bar text will revert to **"Wrap ENSDF"**.
 
+4. **Extract NSR Keynumbers:**
+   - Run the command **"Extract NSR Keynumber"** to scan the file for NSR keynumber patterns and list all found keynumbers in a separate window.
+
 
 ## Contributing & Feedback
 
