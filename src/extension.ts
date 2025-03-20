@@ -100,6 +100,36 @@ function extractLeadingNumber(text: string): string {
     return match ? match[0] : "";
 }
 
+/**
+ * 
+ * @param NUCID: size<=5, eg, "1H", "9BE","23NA","119AG"
+ * @returns: a formatted NUCID with length=5, eg, "  1H", "  9BE"," 23NA","119AG" 
+ */
+function formatNUCID(NUCID: string): string {
+    try {
+		let s = NUCID.trim();   
+		let isAS=isA(s);
+		if(s.length>5 || (!isNUCID(s)&&!isAS)){
+			return "";
+		}
+
+		if(isAS){
+			return s.padStart(3)+"  ";
+		}
+     
+		let n = s.search(/[a-zA-Z]/);
+        let AS= s.substring(0,n);
+		let EN= s.substring(n);
+
+		s=AS.padStart(3)+EN.padEnd(2);
+
+		return s;
+    } catch (e) {
+        return "";
+    }
+
+	return "";
+}
 
 /**
  * make a ENSDF line prefix using given NUCID and line type
@@ -694,43 +724,57 @@ function wrapENSDFText(text:string): string[] {
 			newLines.push("");
 			continue;
 		}
-		console.log("1@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID));
+		//console.log("1@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID));
 
 		let out=parseNUCIDandComType(line);
-		  
-		//console.log(out.length);
-		//console.log("2@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID)+" "+out.length);
+		//when out.length=0
+		//1. line is not a comment line, but a record line or continuation record line or other non-comment line
+		//2. line is a comment line, but not in the correct format
 
-		//if(c2!=="C"&&c2!=="D"){
-		if(out===null || out.length===0){
-			if(tempText.length>0){
-				wrapAndaddToNewLines(tempText,NUCID,newLines);
-				tempText="";
+        if(out===null || out.length===0){
+			let tempNUCID=extractLeadingNUCID(line);
+			let isComLine=true;
+			if(tempNUCID.length>0){
+				let tempLine=formatNUCID(tempNUCID)+line.substring(line.indexOf(tempNUCID));
+				let tempType=tempLine.substring(5,9);
+				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN]\s)$/.test(tempType.toUpperCase())){
+					isComLine=true;
+				}else{
+					isComLine=false;
+				}
 			}
-			newLines.push(line);
-			continue;
-		}
 
-				
-		let NUCID1=out[0];
-		let comType=out[1];//"c", or "cL", or "2cL", similar for "d"
-		let comBody=out[2];
-		let prefix=out[3];
-
-		let typeS=comType.toUpperCase();
-		if(!line.toUpperCase().trim().startsWith(NUCID) && NUCID1.length===0){
-			if(tempText.length>0){
-
+			if(!isComLine){		
+				if(tempText.length>0){
+					wrapAndaddToNewLines(tempText,NUCID,newLines);
+					tempText="";
+				}
+				newLines.push(line);
+			}else if(tempText.length>0){
 				tempText=tempText.trimEnd()+" "+line.trim();
 				if(lines.indexOf(line)===lines.length-1){//last line
 					wrapAndaddToNewLines(tempText,NUCID,newLines);
 				}
 			}else{
+				//it is a comment line, but not in the correct format and 
+				//can't be join to the previous existing comment line
 				newLines.push(line);
 			}
-
 			continue;
 		}
+
+		let NUCID1="",comType="",comBody="",prefix="";
+		NUCID1=out[0];
+		comType=out[1];//"c", or "cL", or "2cL", similar for "d"
+		comBody=out[2];
+		prefix=out[3];
+
+		let typeS=comType.toUpperCase();
+
+		//console.log(out.length);
+		//console.log("2@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID)+" "+out.length);
+
+		//console.log(out.length+"   "+line);
 
 		//the following for an ENSDF line in correct format, but it is not necessary for wrapping
 		//const c1=line.charAt(5);
@@ -789,7 +833,7 @@ function wrapENSDFTextToNewText(text:string, eol:string): string {
 	return text;
 }
 
-function makeCommand(namePrefix: string,option: string): vscode.Disposable {
+function makeWrapCommand_old(namePrefix: string,option: string): vscode.Disposable {
 		// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
@@ -850,6 +894,62 @@ function makeCommand(namePrefix: string,option: string): vscode.Disposable {
 	return disposable;
 }
 
+function makeWrapCommand(commandFullName: string): vscode.Disposable {
+	// The command has been defined in the package.json file
+	// Now provide the implementation of the command with registerCommand
+	// The commandId parameter must match the command field in package.json
+
+
+const disposable = vscode.commands.registerCommand(commandFullName, () => {
+	// The code you place here will be executed every time your command is executed
+	// Display a message box to the user
+	//vscode.window.showInformationMessage('Hello World from ensdf-line-wrap!');
+
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		return;
+	}
+	const doc = editor.document;
+
+	let text="";
+	let fullText = doc.getText();
+	let selection = editor.selection;
+	//let hasSelection = !selection.isEmpty;		
+	if(!selection.isEmpty){
+		text = doc.getText(selection);
+		
+		let lineNo=selection.end.line;
+		let colNo=selection.end.character;
+		let line=doc.lineAt(lineNo).text;
+		if(colNo<line.length-1 && line.substring(colNo,line.length).trim().length===0){
+			let startPos=fullText.indexOf(text);
+			let endPos=startPos+text.length+(line.length-colNo);
+			selection=new vscode.Selection(doc.positionAt(startPos),doc.positionAt(endPos));
+		}
+		//if(colNo<line.length-1 || (line.endsWith("\n")
+		//selection.end.
+		//console.log("LineNo="+lineNo+" colNo="+colNo+" line="+line+"$"+line.length+" "+line.includes("\r\n")+" "+line.includes("\r"));
+		//console.log("@@@"+line.charAt(line.length)+"$$"+(line===line.trim())+" "+line.trim().length);
+
+	}else{
+		text=fullText;
+		selection=new vscode.Selection(doc.positionAt(0), doc.positionAt(text.length));
+	}
+
+	const eol = doc.eol === vscode.EndOfLine.LF ? "\n" : "\r\n";
+	//const newLines=wrapENSDFText(text);
+	//const newText = newLines.join(eol);
+
+	const newText=wrapENSDFTextToNewText(text,eol);
+
+	editor.edit(editBuilder => {
+		//const range = new vscode.Range(doc.positionAt(startPos), doc.positionAt(endPos));
+		editBuilder.replace(selection, newText);
+	});
+});
+
+return disposable;
+}
 
 function getCursorPosition() {
     const editor = vscode.window.activeTextEditor;
@@ -1230,17 +1330,21 @@ let lastDocumentVersion = -1;
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	let extensionID="ensdf";
-	let commandPrefix="wrap80";
-	let namePrefix=extensionID+"."+commandPrefix;
+	let commandName="wrap80";
+	let commandFullName=extensionID+"."+commandName;
 
 	//command name=namePrefix+option must be the same as the corresponding "commands"
 	//in package.json
 
-	let disposable1 = makeCommand(namePrefix,"selected");//(namePrefix,option)
-	let disposable2 = makeCommand(namePrefix,"all");
+	/*
+	let disposable1 = makeWrapCommand_old(commandFullName,"selected");//(namePrefix,option)
+	let disposable2 = makeWrapCommand_old(commandFullName,"all");
 	context.subscriptions.push(disposable1);
 	context.subscriptions.push(disposable2);
-    
+    */
+	let wrapCommandDisposable = makeWrapCommand(commandFullName);
+	context.subscriptions.push(wrapCommandDisposable);
+
     autoWrap=false;
 	hasStarted=false;
 
@@ -1302,32 +1406,31 @@ export function activate(context: vscode.ExtensionContext) {
 	//}
 
 	//add a status bar item for running wrapping command by clicking on it
-    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    const wrapCommandStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
 	let statusText0='$('+extensionID+') Wrap ENSDF';//'$('+extensionID+') for icon, since there is none, no icon will show
 	let autoWrapLabel="Auto-wrap ON";
 
-    statusBarItem.text = statusText0;
-    statusBarItem.show();
-    context.subscriptions.push(statusBarItem);
+    wrapCommandStatusBarItem.text = statusText0;
+    wrapCommandStatusBarItem.show();
+    context.subscriptions.push(wrapCommandStatusBarItem);
 
     // Update the status bar item command and tooltip based on the selection
-    const updateStatusBarItem = () => {
+    const updateWrapCommandStatusBarItem = () => {
         const editor = vscode.window.activeTextEditor;
         if (editor) {
             const selection = editor.selection;
 			if(autoWrap){
 				//toggle autoWrap off
-				statusBarItem.command=extensionID+'.toggleAutoWrap',
-				statusBarItem.text = autoWrapLabel;
-				statusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
+				wrapCommandStatusBarItem.command=extensionID+'.toggleAutoWrap',
+				wrapCommandStatusBarItem.text = autoWrapLabel;
+				wrapCommandStatusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
 			}else{
-				statusBarItem.text = statusText0;
-				if (selection.isEmpty) {
-					statusBarItem.command = namePrefix+"all";
-					statusBarItem.tooltip = 'Wrap all ENSDF lines';
+				wrapCommandStatusBarItem.text = statusText0;
+				wrapCommandStatusBarItem.command = commandFullName;
+				if (selection.isEmpty) {				
+					wrapCommandStatusBarItem.tooltip = 'Wrap all ENSDF lines';
 				} else {
-					statusBarItem.command = namePrefix+"selected";
-					statusBarItem.tooltip = 'Wrap selected ENSDF lines';
+					wrapCommandStatusBarItem.tooltip = 'Wrap selected ENSDF lines';
 				}
 			}
 
@@ -1335,21 +1438,24 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     // Update the status bar item when the selection changes
-    const selectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection(updateStatusBarItem);
+    const selectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection(updateWrapCommandStatusBarItem);
     context.subscriptions.push(selectionChangeDisposable);
 
+	const activeEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(updateWrapCommandStatusBarItem);
+    context.subscriptions.push(activeEditorChangeDisposable);
+
     // Initial update of the status bar item
-    updateStatusBarItem();
+    updateWrapCommandStatusBarItem();
 
     // Register the toggleAutoWrap command
     const toggleAutoWrapDisposable = vscode.commands.registerCommand(extensionID+'.toggleAutoWrap', () => {
         autoWrap = !autoWrap;
 		if (autoWrap) {
-			statusBarItem.command=extensionID+'.toggleAutoWrap',
-            statusBarItem.text = autoWrapLabel;
-            statusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
+			wrapCommandStatusBarItem.command=extensionID+'.toggleAutoWrap',
+            wrapCommandStatusBarItem.text = autoWrapLabel;
+            wrapCommandStatusBarItem.tooltip = 'Auto-wrap of ENSDF lines is enabled';
         } else {
-            updateStatusBarItem();
+            updateWrapCommandStatusBarItem();
         }
         vscode.window.showInformationMessage(`Auto Wrap is now ${autoWrap ? 'enabled' : 'disabled'}`);
     });
@@ -1382,17 +1488,20 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     // Update the line and column numbers status bar item when the selection changes
-    const selectionChangeDisposable1 = vscode.window.onDidChangeTextEditorSelection(updateLineColumnStatusBarItem);
-    context.subscriptions.push(selectionChangeDisposable1);
+    const lineAndColNumSelectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection(updateLineColumnStatusBarItem);
+    context.subscriptions.push(lineAndColNumSelectionChangeDisposable);
+
+	const lineAndColNumEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(updateLineColumnStatusBarItem);
+    context.subscriptions.push(lineAndColNumEditorChangeDisposable);
 
     // Initial update of the line and column numbers status bar item
     updateLineColumnStatusBarItem();
 
     // Register the extractNSRKeynumbers command
-    let disposable3 = vscode.commands.registerCommand(extensionID+'.extractNSRKeynumber', () => {
+    let extractKeynumberDisposable = vscode.commands.registerCommand(extensionID+'.extractNSRKeynumber', () => {
         extractNSRKeynumbersFromEditor();
     });
-    context.subscriptions.push(disposable3);
+    context.subscriptions.push(extractKeynumberDisposable);
 }
 
 // This method is called when your extension is deactivated
