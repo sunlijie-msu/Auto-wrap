@@ -675,22 +675,7 @@ function wrapENSDFText(text) {
             newLines.push("");
             continue;
         }
-        //console.log("1@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID));
-        if (!line.toUpperCase().trim().startsWith(NUCID)) {
-            if (tempText.length > 0) {
-                tempText = tempText.trimEnd() + " " + line.trim();
-                if (lines.indexOf(line) === lines.length - 1) { //last line
-                    wrapAndaddToNewLines(tempText, NUCID, newLines);
-                }
-            }
-            else {
-                newLines.push(line);
-            }
-            continue;
-        }
-        //the following for an ENSDF line in correct format, but it is not necessary for wrapping
-        //const c1=line.charAt(5);
-        //const c2=line.toUpperCase().charAt(6);
+        console.log("1@@@" + line + " NUCID=" + NUCID + " " + line.trim().startsWith(NUCID));
         let out = parseNUCIDandComType(line);
         //console.log(out.length);
         //console.log("2@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID)+" "+out.length);
@@ -707,10 +692,25 @@ function wrapENSDFText(text) {
         let comType = out[1]; //"c", or "cL", or "2cL", similar for "d"
         let comBody = out[2];
         let prefix = out[3];
+        let typeS = comType.toUpperCase();
+        if (!line.toUpperCase().trim().startsWith(NUCID) && NUCID1.length === 0) {
+            if (tempText.length > 0) {
+                tempText = tempText.trimEnd() + " " + line.trim();
+                if (lines.indexOf(line) === lines.length - 1) { //last line
+                    wrapAndaddToNewLines(tempText, NUCID, newLines);
+                }
+            }
+            else {
+                newLines.push(line);
+            }
+            continue;
+        }
+        //the following for an ENSDF line in correct format, but it is not necessary for wrapping
+        //const c1=line.charAt(5);
+        //const c2=line.toUpperCase().charAt(6);
         //console.log("###"+line +" NUCID="+NUCID+" comType="+comType+" prefix="+prefix+"$");
         //console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
         //if(c1===' '){
-        let typeS = comType.toUpperCase();
         if ((/^[CD]/.test(typeS) && typeS !== "CC") || (count === 0 && /^[[2-9A-Z][CD]/.test(typeS))) {
             if (tempText.length > 0) {
                 wrapAndaddToNewLines(tempText, NUCID, newLines);
@@ -718,6 +718,9 @@ function wrapENSDFText(text) {
             tempText = line.trimEnd();
             if (lines.indexOf(line) === lines.length - 1) { //last line
                 wrapAndaddToNewLines(tempText, NUCID, newLines);
+            }
+            if (NUCID1.length > 0) {
+                NUCID = NUCID1;
             }
             count++;
         }

@@ -5,7 +5,7 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 ## Installation
 
 1. **Download the VSIX Package**  
-   Download the file `ensdf-auto-wrap-0.0.3.vsix`.
+   Download the file `ensdf-auto-wrap-0.0.5.vsix`.
 
 2. **Install the Extension**  
    - Open Visual Studio Code.
@@ -15,20 +15,13 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 ## Usage
 
 1. **Open Your ENSDF Dataset File:**  
-   Ensure that each comment line in your file starts with a fixed 9-character prefix formatted as follows:
-   - **Column 1:** space  
-   - **Columns 2–4:** Nuclide identifier (e.g., "35P")  
-   - **Column 5:** space  
-   - **Column 6:** space  
-   - **Column 7:** record type (e.g., "c")  
-   - **Columns 8–9:** spaces  
-   The comment text begins at column 10.
+   Ensure that each comment line in your file starts with the fixed 9-character prefix as described above.
 
 2. **Wrap the Text:**  
    - Run the command **"ENSDF: Wrap Text to 80 Columns"** to wrap all text in the file.
    - Run the command **"ENSDF: Wrap Text to 80 Columns (selected)"** to wrap only the selected text.
    - **Using the Status Bar:**  
-     A status-bar item labeled **"Wrap ENSDF"** appears at the left of the status bar. Clicking it will run the wrapping command. If no text is selected, it wraps the entire file; if text is selected, it wraps just the selection.
+     A status-bar item labeled **"Wrap ENSDF"** appears at the left side of the status bar. Clicking it will run the wrapping command. If no text is selected, it wraps the entire file; if text is selected, it wraps just the selection.
 
 3. **Toggle Auto Wrap:**  
    - Run the command **"Toggle Auto Wrap ENSDF"** to enable or disable auto-wrap while typing.
@@ -36,8 +29,13 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
    - When enabled, the status bar item changes to **"Auto-wrap ON"** and the extension automatically reformats lines as you type.
    - To disable auto-wrap, click the status-bar item or run the command again; the status-bar text will revert to **"Wrap ENSDF"**.
 
-4. **Extract NSR Keynumbers:**
-   - Run the command **"Extract NSR Keynumber"** to scan the file for NSR keynumber patterns and list all found keynumbers in a separate window.
+4. **Extract NSR Keynumbers:**  
+   - Run the command **"Extract NSR Keynumber"** to scan your file for NSR keynumber patterns and display all found keynumbers in a separate window.
+
+## Recent Changes
+
+- **Version 0.0.5:**  
+  - Improved Wrapping Algorithms.
 
 
 ## Contributing & Feedback
