@@ -301,22 +301,24 @@ function parseNUCIDandComType(line: string): string[] {
 		if(isElementSymbol(EN) && isNUCID(AS+EN)){
 			let NUCID=AS+EN;
 			let lineType="", comBody="";
-            s=s.substring(i).trim();
+                        s=s.substring(i).trim();
 			let s1=s.toUpperCase();
-			if(/^[2-9A-Z]?[CD][\sD]?[PN]/.test(s1)){//delayed or prompt proton or neutron
-				
-				const match = s1.match(/^[2-9A-Z]?[CD][\sD]?[PN]/);
+			if(/^[2-9A-Z]?[CD][\sD][PN]/.test(s1)){//delayed or prompt proton or neutron				
+				const match = s1.match(/^[2-9A-Z]?[CD][\sD][PN]/);
 				if (match) {
 					lineType =s.substring(0,match[0].length);
 					comBody=s.substring(match[0].length).trim();
 				}
 				//console.log(line+"\n1 type="+lineType+"$ body="+comBody);
-			}else{
+			}else if(/^D[PN]/.test(s1) && /^\d/.test(s1.substring(2).trim())){
+				//delayed-particle record line
+				//do nothing
+			}else if(/^[2-9A-Z]?[CD][LGBAEP]?$/.test(s1)){
 				let n=s.indexOf(" ");
 				if(n>0){
 					s1=s.substring(0,n);
 					if(s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAEP]?$/)){
-                        lineType=s1;
+                                                lineType=s1;
 						comBody=s.substring(n).trim();
 					}
 					//console.log(line+"\n1 type="+lineType+"$ body="+comBody);
