@@ -2,7 +2,7 @@
   "name": "ensdf-auto-wrap",
   "displayName": "ENSDF Auto Wrap",
   "description": "Auto-wrap text to 80 columns for ENSDF formatting",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.75.0"
   },
