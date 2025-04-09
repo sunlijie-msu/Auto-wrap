@@ -303,8 +303,10 @@ function parseNUCIDandComType(line: string): string[] {
 			let lineType="", comBody="";
                         s=s.substring(i).trim();
 			let s1=s.toUpperCase();
-			if(/^[2-9A-Z]?[CD][\sD][PN]/.test(s1)){//delayed or prompt proton or neutron				
-				const match = s1.match(/^[2-9A-Z]?[CD][\sD][PN]/);
+			
+			if(/^[2-9A-Z]?[CD][\sD][PN]/.test(s1)){//delayed or prompt proton or neutron
+				
+				let match = s1.match(/^[2-9A-Z]?[CD][\sD][PN]/);
 				if (match) {
 					lineType =s.substring(0,match[0].length);
 					comBody=s.substring(match[0].length).trim();
@@ -313,13 +315,22 @@ function parseNUCIDandComType(line: string): string[] {
 			}else if(/^D[PN]/.test(s1) && /^\d/.test(s1.substring(2).trim())){
 				//delayed-particle record line
 				//do nothing
-			}else if(/^[2-9A-Z]?[CD][LGBAEP]?$/.test(s1)){
+			}else if(/^[2-9A-Z]?[CD][\sLGBAEP]/.test(s1)){
 				let n=s.indexOf(" ");
 				if(n>0){
 					s1=s.substring(0,n);
 					if(s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAEP]?$/)){
-                                                lineType=s1;
+                        lineType=s1;
 						comBody=s.substring(n).trim();
+					}else{
+						let match=s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAEP]/);
+						if(match){//151TB cGE(A)$Derived from the yield ... , where no space between "cG" and "E(A)"
+							let n1=s.indexOf("$");
+							if(n1>0 && n1<n){
+								lineType=s.substring(0,match[0].length);
+								comBody=s.substring(match[0].length).trim();
+							}
+						}
 					}
 					//console.log(line+"\n1 type="+lineType+"$ body="+comBody);
 					//console.log(line+"\n2 type="+lineType+" n="+n+"  s="+s+" s1="+s1+"  body="+comBody);
@@ -327,6 +338,7 @@ function parseNUCIDandComType(line: string): string[] {
 				}
 
 			}
+			
 			if(lineType.length>0){
 				out[0]=NUCID;
 				out[1]=lineType;
