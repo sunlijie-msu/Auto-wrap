@@ -5,7 +5,7 @@ ENSDF Auto Wrap is a Visual Studio Code extension designed to automatically refo
 ## Installation
 
 1. **Download the VSIX Package**  
-   Download the file `ensdf-auto-wrap-0.0.5.vsix`.
+   Download the file `ensdf-auto-wrap-0.0.x.vsix`.
 
 2. **Install the Extension**  
    - Open Visual Studio Code.
