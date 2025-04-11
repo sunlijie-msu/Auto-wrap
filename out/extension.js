@@ -311,6 +311,7 @@ function parseNUCIDandComType(line) {
             let lineType = "", comBody = "";
             s = s.substring(i).trim();
             let s1 = s.toUpperCase();
+            //console.log("#### s1="+s1+"  line="+line);
             if (/^[2-9A-Z]?[CD][\sD][PN]/.test(s1)) { //delayed or prompt proton or neutron
                 let match = s1.match(/^[2-9A-Z]?[CD][\sD][PN]/);
                 if (match) {
@@ -342,8 +343,8 @@ function parseNUCIDandComType(line) {
                         }
                     }
                     //console.log(line+"\n1 type="+lineType+"$ body="+comBody);
-                    //console.log(line+"\n2 type="+lineType+" n="+n+"  s="+s+" s1="+s1+"  body="+comBody);
-                    //console.log(s1.match(/^[2-9a-zA-Z]?[CD][LGBAEP]?$/));
+                    //console.log(line+"\n    type="+lineType+" n="+n+"  s="+s+" s1="+s1+"  body="+comBody);
+                    //console.log("    "+s1.toUpperCase().match(/^[2-9a-zA-Z]?[CD][LGBAEP]?$/));
                 }
             }
             if (lineType.length > 0) {
@@ -568,6 +569,7 @@ function getNextPrefix(currPrefix) {
     let c2 = currPrefix.charAt(6); //"c" or "d" for comment/document, " " for record/continuation record
     let c3 = currPrefix.charAt(7); //record line type
     let c4 = currPrefix.charAt(8);
+    //console.log("$1 "+currPrefix+"$");
     if (c2 === ' ') {
         return currPrefix;
     }
@@ -580,18 +582,23 @@ function getNextPrefix(currPrefix) {
         count = count + 1;
     }
     else if (isLetter(c1)) {
-        count = c1.charCodeAt(0) - 'a'.charCodeAt(0) + 10 + 1;
+        count = c1.charCodeAt(0) - 'A'.charCodeAt(0) + 10 + 1;
+        if (c1 === 'Z') {
+            count += 6; //there are 6 non-letter character between 'Z' and 'a'
+        }
+        //console.log("count="+count+" $"+'Z'.charCodeAt(0)+"$"+'a'.charCodeAt(0));
     }
     else {
         return currPrefix;
     }
+    //console.log("$2 "+currPrefix+"$");
     let label;
     if (count < 10) {
         label = count.toString() + recordType;
     }
     else {
-        label = String.fromCharCode('a'.charCodeAt(0) + (count - 10)) + recordType;
-        //console.log("label="+label+" count="+count);
+        label = String.fromCharCode('A'.charCodeAt(0) + (count - 10)) + recordType;
+        //console.log("currPrefix="+currPrefix+" label="+label+" count="+count);
     }
     // New prefix: fixed (6 chars) + label (2 chars) + space or particle-type (1 char) = 9 characters.
     return NUCID + label;
@@ -626,7 +633,7 @@ function wrapAndaddToNewLines(textToWrap, NUCID, newLines) {
         if (NUCID !== NUCID1) {
             return; //should not happen
         }
-        const basePrefix = prefix;
+        const basePrefix = prefix.substring(0, 6) + prefix.toLowerCase().charAt(6) + prefix.substring(7);
         const content = comBody;
         //console.log(basePrefix);
         // Wrap content into parts of maximum availableWidth.
@@ -720,6 +727,7 @@ function wrapENSDFText(text) {
         //when out.length=0
         //1. line is not a comment line, but a record line or continuation record line or other non-comment line
         //2. line is a comment line, but not in the correct format
+        //console.log("#### "+out.length+"@"+line);
         if (out === null || out.length === 0) {
             let tempNUCID = extractLeadingNUCID(line);
             let isComLine = true;
@@ -768,7 +776,28 @@ function wrapENSDFText(text) {
         //console.log("###"+line +" NUCID="+NUCID+" comType="+comType+" prefix="+prefix+"$");
         //console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
         //if(c1===' '){
-        if ((/^[CD]/.test(typeS) && typeS !== "CC") || (count === 0 && /^[[2-9A-Z][CD]/.test(typeS))) {
+        let hasHeader = false;
+        let isFirstDPComLine = false;
+        if (/^[CD]D[PN]/.test(typeS)) {
+            let n = comBody.trim().indexOf("$");
+            if (n < 0) {
+                n = comBody.trim().indexOf("   ");
+            }
+            if (n === 0) {
+                isFirstDPComLine = true;
+            }
+            else if (n > 0) {
+                let s = comBody.trim().substring(0, n).trim();
+                if (s.length < 10) {
+                    s = s.replace("(", "").replace(")", "").replace(",", "").trim();
+                    if (s === s.toUpperCase() && /^[A-Z]+$/.test(s)) {
+                        isFirstDPComLine = true;
+                    }
+                }
+            }
+        }
+        if (isFirstDPComLine || (/^[CD]/.test(typeS) && !/^[CD][CD]/.test(typeS)) || (count === 0 && /^[[2-9A-Z][CD]/.test(typeS))) {
+            //console.log("###"+line +"\n    NUCID="+NUCID+" comType="+comType+" prefix="+prefix+"$"+tempText);
             if (tempText.length > 0) {
                 wrapAndaddToNewLines(tempText, NUCID, newLines);
             }
@@ -787,6 +816,7 @@ function wrapENSDFText(text) {
             }
             else {
                 tempText = tempText.trimEnd() + " " + comBody;
+                //console.log("###"+line +"\n    NUCID="+NUCID+" comType="+comType+" prefix="+prefix+" comBody="+comBody+"$"+tempText);
                 if (lines.indexOf(line) === lines.length - 1) { //last line
                     wrapAndaddToNewLines(tempText, NUCID, newLines);
                 }
