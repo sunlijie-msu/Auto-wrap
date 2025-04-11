@@ -633,8 +633,8 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 			return;//should not happen
 		}
 
-		let NUCID1=out[0];
-        let comType=out[1];
+		let NUCID1=out[0];        
+		let comType=out[1];
 		let comBody=out[2];
 		let prefix=out[3];//length=9, ends with a blank space except for particle record with "P" or "N"
     
@@ -645,7 +645,7 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 			return;//should not happen
 		}
      
-		const basePrefix=prefix;
+		const basePrefix=prefix.substring(0,6)+prefix.toLowerCase().charAt(6)+prefix.substring(7);
 		const content=comBody;
 		//console.log(basePrefix);
 
