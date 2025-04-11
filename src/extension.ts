@@ -818,7 +818,7 @@ function wrapENSDFText(text:string): string[] {
 			if(n<0){
 				n=comBody.trim().indexOf("   ");
 			}
-			if(n==0){
+			if(n===0){
 				isFirstDPComLine=true;
 			}else if(n>0){
 				let s=comBody.trim().substring(0,n).trim();
