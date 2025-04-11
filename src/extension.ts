@@ -379,7 +379,7 @@ function extractLeadingNUCID(text: string): string {
 			return s.toUpperCase();
 		}
 
-		n=s.indexOf(AS);
+		n=s.indexOf(AS)+AS.length;
 		let EN=s.substring(n);
 		if(EN.length===0){
 			return AS;
