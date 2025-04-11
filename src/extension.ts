@@ -800,7 +800,7 @@ function wrapENSDFText(text:string): string[] {
 		//console.log("2###"+line+"@"+c1+"@"+c2+" "+tempText.length);
 		//if(c1===' '){
 
-		if( (/^[CD]/.test(typeS)&&typeS!=="CC") || (count===0&&/^[[2-9A-Z][CD]/.test(typeS) )){
+		if( (/^[CD]/.test(typeS)&&!/^[CD][CD]$/.test(typeS)) || (count===0&&/^[[2-9A-Z][CD]/.test(typeS) )){
 			if(tempText.length>0){
 				wrapAndaddToNewLines(tempText,NUCID,newLines);
 			}
