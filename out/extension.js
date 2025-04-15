@@ -324,16 +324,16 @@ function parseNUCIDandComType(line) {
                 //delayed-particle record line
                 //do nothing
             }
-            else if (/^[2-9A-Z]?[CD][\sLGBAEP]/.test(s1)) {
+            else if (/^[2-9A-Z]?[CD][\sLGBAENQP]/.test(s1)) {
                 let n = s.indexOf(" ");
                 if (n > 0) {
                     s1 = s.substring(0, n);
-                    if (s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAEP]?$/)) {
+                    if (s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENQP]?$/)) {
                         lineType = s1;
                         comBody = s.substring(n).trim();
                     }
                     else {
-                        let match = s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAEP]/);
+                        let match = s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENQP]/);
                         if (match) { //151TB cGE(A)$Derived from the yield ... , where no space between "cG" and "E(A)"
                             let n1 = s.indexOf("$");
                             if (n1 > 0 && n1 < n) {
