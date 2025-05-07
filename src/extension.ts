@@ -298,7 +298,7 @@ function parseNUCIDandComType(line: string): string[] {
 
 		//console.log(EN+" isEn="+isElementSymbol(EN)+" isNUCID="+isNUCID(AS+EN)+" line="+line);
 		
-		if(isElementSymbol(EN) && isNUCID(AS+EN)){
+		if( EN.length===0 || (isElementSymbol(EN) && isNUCID(AS+EN)) ){
 			let NUCID=AS+EN;
 			let lineType="", comBody="";
             s=s.substring(i).trim();
@@ -316,15 +316,15 @@ function parseNUCIDandComType(line: string): string[] {
 			}else if(/^D[PN]/.test(s1) && /^\d/.test(s1.substring(2).trim())){
 				//delayed-particle record line
 				//do nothing
-			}else if(/^[2-9A-Z]?[CD][\sLGBAENQP]/.test(s1)){
+			}else if(/^[2-9A-Z]?[CD][\sLGBAENP]/.test(s1)){
 				let n=s.indexOf(" ");
 				if(n>0){
 					s1=s.substring(0,n);
-					if(s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENQP]?$/)){
+					if(s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENP]?$/)){
                         lineType=s1;
 						comBody=s.substring(n).trim();
 					}else{
-						let match=s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENQP]/);
+						let match=s1.toUpperCase().match(/^[2-9A-Z]?[CD][LGBAENP]/);
 						if(match){//151TB cGE(A)$Derived from the yield ... , where no space between "cG" and "E(A)"
 							let n1=s.indexOf("$");
 							if(n1>0 && n1<n){
@@ -371,6 +371,7 @@ function extractLeadingNUCID(text: string): string {
 	if(A>310){
 		return "";
 	}
+   
 
 	let n=s.indexOf(" ");
 	if(n>0){
@@ -387,6 +388,7 @@ function extractLeadingNUCID(text: string): string {
 			EN=EN.substring(0,2);
 		}
 
+		//console.log(" s="+s+"  AS="+AS+"$  isA="+isA(AS)+" EN="+EN+" n="+n);
 		if(isElementSymbol(EN) ){
 			s=AS+EN;
 		}else if(isElementSymbol(EN.charAt(0))){
@@ -633,8 +635,8 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 			return;//should not happen
 		}
 
-		let NUCID1=out[0];        
-		let comType=out[1];
+		let NUCID1=out[0];
+        let comType=out[1];
 		let comBody=out[2];
 		let prefix=out[3];//length=9, ends with a blank space except for particle record with "P" or "N"
     
@@ -648,6 +650,7 @@ function wrapAndaddToNewLines(textToWrap: string, NUCID: string, newLines:string
 		const basePrefix=prefix.substring(0,6)+prefix.toLowerCase().charAt(6)+prefix.substring(7);
 		const content=comBody;
 		//console.log(basePrefix);
+
 
 		// Wrap content into parts of maximum availableWidth.
 		const wrappedParts = splitCommentText(content, NUCID, prefix, availableWidth);
@@ -708,21 +711,26 @@ function wrapENSDFText(text:string): string[] {
 		if(isA(NUCID)){
 			s=s.substring(ns+1).trim();
 			ns=s.indexOf(" ");
+
 			if(ns>0){
 				s=s.substring(0,ns).toUpperCase();
-				if(s==='C'||s==='D'){
+				if(/^[2-9A-Z]?[CD]/.test(s)){
+				//if(s==='C'||s==='D'){
 					isAbstract=true;
 				}
 			}
 		}else{
 			
 		}
+
+		//console.log(NUCID+"#"+isNUCID(NUCID)+" s="+s+" ns="+ns+" "+isAbstract);
 		if(!isAbstract){
 			return newLines;
 		}
 	}
 
 	//console.log(text);
+	//console.log(NUCID+"#"+isNUCID(NUCID));
 	//console.log(startPos+"  "+endPos);
 	//const text = doc.getText();
 	//const startPos=0;
@@ -768,6 +776,8 @@ function wrapENSDFText(text:string): string[] {
 					isComLine=false;
 				}
 			}
+
+			//console.log("#### "+tempNUCID+"@"+line+" isComLine="+isComLine+"  $"+tempText);
 
 			if(!isComLine){		
 				if(tempText.length>0){
