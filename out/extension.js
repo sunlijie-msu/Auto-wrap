@@ -625,7 +625,7 @@ function wrapAndaddToNewLines(textToWrap, NUCID, newLines) {
         if (out === null || out.length === 0) {
             return; //should not happen
         }
-        let NUCID1 = out[0];
+        let NUCID1 = out[0].toUpperCase();
         let comType = out[1];
         let comBody = out[2];
         let prefix = out[3]; //length=9, ends with a blank space except for particle record with "P" or "N"
@@ -683,7 +683,7 @@ function wrapENSDFText(text) {
     if (NUCID.length > 5) {
         let out = parseNUCIDandComType(text);
         if (out.length > 0) {
-            NUCID = out[0];
+            NUCID = out[0].toUpperCase();
         }
     }
     if (!isNUCID(NUCID)) {
@@ -767,7 +767,7 @@ function wrapENSDFText(text) {
             continue;
         }
         let NUCID1 = "", comType = "", comBody = "", prefix = "";
-        NUCID1 = out[0];
+        NUCID1 = out[0].toUpperCase();
         comType = out[1]; //"c", or "cL", or "2cL", similar for "d"
         comBody = out[2];
         prefix = out[3];
@@ -1027,7 +1027,7 @@ function autoWrapCurrentComment() {
         if (out === null || out.length === 0) {
             return;
         }
-        let NUCID = out[0];
+        let NUCID = out[0].toUpperCase();
         //let lineType=out[1];
         //let comBody=out[2];
         let prefix = out[3];
