@@ -741,7 +741,7 @@ function wrapENSDFText(text) {
                 if (/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN]\s)$/.test(tempType.toUpperCase())) {
                     isComLine = true;
                 }
-                else {
+                else if (/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType === " PN ") { //regular record line or continuation record line
                     isComLine = false;
                 }
             }
