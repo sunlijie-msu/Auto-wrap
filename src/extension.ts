@@ -771,9 +771,10 @@ function wrapENSDFText(text:string): string[] {
 			if(tempNUCID.length>0){
 				let tempLine=formatNUCID(tempNUCID)+line.substring(line.indexOf(tempNUCID));
 				let tempType=tempLine.substring(5,9);
-				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN]\s)$/.test(tempType.toUpperCase())){
+								
+				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN]\s)$/.test(tempType.toUpperCase()) ){
 					isComLine=true;
-				}else{
+				}else if(/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType===" PN "){//regular record line or continuation record line
 					isComLine=false;
 				}
 			}
