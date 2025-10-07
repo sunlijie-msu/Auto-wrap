@@ -324,7 +324,7 @@ function parseNUCIDandComType(line) {
                 //delayed-particle record line
                 //do nothing
             }
-            else if (/^[2-9A-Z]?[CD][\sLGBAENPQ]/.test(s1)) {
+            else if (/^[2-9A-Z]?[CD][\sLGBAENPQ]?/.test(s1)) {
                 let n = s.indexOf(" ");
                 if (n > 0) {
                     s1 = s.substring(0, n);
@@ -345,6 +345,9 @@ function parseNUCIDandComType(line) {
                     //console.log(line+"\n1 type="+lineType+"$ body="+comBody);
                     //console.log(line+"\n    type="+lineType+" n="+n+"  s="+s+" s1="+s1+"  body="+comBody);
                     //console.log("    "+s1.toUpperCase().match(/^[2-9a-zA-Z]?[CD][LGBAEP]?$/));
+                }
+                else if (s1 === "D" || s1 === "C") {
+                    lineType = s;
                 }
             }
             if (lineType.length > 0) {
@@ -629,6 +632,7 @@ function wrapAndaddToNewLines(textToWrap, NUCID, newLines) {
         let comType = out[1];
         let comBody = out[2];
         let prefix = out[3]; //length=9, ends with a blank space except for particle record with "P" or "N"
+        //console.log(textToWrap);
         //console.log(NUCID1+"$comType="+comType+"$comBody="+comBody+"$prefix="+prefix+"$");
         NUCID = NUCID.trim().toUpperCase();
         if (NUCID !== NUCID1) {
@@ -720,6 +724,7 @@ function wrapENSDFText(text) {
     for (const line of lines) {
         if (line.trim() === "") {
             if (tempText.length > 0) {
+                //console.log("####"+tempText);
                 wrapAndaddToNewLines(tempText, NUCID, newLines);
                 tempText = "";
             }
@@ -732,21 +737,40 @@ function wrapENSDFText(text) {
         //1. line is not a comment line, but a record line or continuation record line or other non-comment line
         //2. line is a comment line, but not in the correct format
         //console.log("#### "+out.length+"@"+line);
+        let isSep = false;
         if (out === null || out.length === 0) {
             let tempNUCID = extractLeadingNUCID(line);
             let isComLine = true;
+            let tempBody = "";
             if (tempNUCID.length > 0) {
-                let tempLine = formatNUCID(tempNUCID) + line.substring(line.indexOf(tempNUCID));
+                let index = line.toUpperCase().indexOf(tempNUCID);
+                tempBody = line.substring(index + tempNUCID.length);
+                let tempLine = formatNUCID(tempNUCID) + tempBody;
                 let tempType = tempLine.substring(5, 9);
-                if (/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN]\s)$/.test(tempType.toUpperCase())) {
+                tempBody = line;
+                if (/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN\s]\s)$/.test(tempType.toUpperCase())) {
                     isComLine = true;
+                    if (tempNUCID === NUCID) {
+                        tempBody = tempLine.substring(9);
+                        if (/^\s[CD]\s\s$/.test(tempType.toUpperCase())) {
+                            isSep = true;
+                        }
+                    }
                 }
                 else if (/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType === " PN ") { //regular record line or continuation record line
                     isComLine = false;
+                    tempBody = "";
                 }
+                //else if(isInteger(tempNUCID) && !isInteger(NUCID)){
+                //	isComLine=true;
+                //}else if(tempType.trim().length===0 || tempNUCID.trim().length!==NUCID.trim().length){
+                //	isComLine=true;
+                //}
+                //console.log(line.indexOf(tempNUCID)+" ##"+tempNUCID.length+"$$$"+line+"@@@"+"abc".indexOf("a"));
+                //console.log("@@@"+tempNUCID+"###"+NUCID+"$$$"+tempType+"##"+isComLine+"##"+tempLine+"  $$"+tempBody+"##");
             }
             //console.log("#### "+tempNUCID+"@"+line+" isComLine="+isComLine+"  $"+tempText);
-            if (!isComLine) {
+            if (!isComLine || isSep) {
                 if (tempText.length > 0) {
                     wrapAndaddToNewLines(tempText, NUCID, newLines);
                     tempText = "";
@@ -754,7 +778,7 @@ function wrapENSDFText(text) {
                 newLines.push(line);
             }
             else if (tempText.length > 0) {
-                tempText = tempText.trimEnd() + " " + line.trim();
+                tempText = tempText.trimEnd() + " " + tempBody.trim();
                 if (lines.indexOf(line) === lines.length - 1) { //last line
                     wrapAndaddToNewLines(tempText, NUCID, newLines);
                 }
@@ -771,6 +795,11 @@ function wrapENSDFText(text) {
         comType = out[1]; //"c", or "cL", or "2cL", similar for "d"
         comBody = out[2];
         prefix = out[3];
+        isSep = false;
+        if (/^[CD]/.test(comType.toUpperCase()) && NUCID1 === NUCID && comBody.trim().length === 0) {
+            //empty line used for separation
+            isSep = true;
+        }
         let typeS = comType.toUpperCase();
         //console.log(out.length);
         //console.log("2@@@"+line +" NUCID="+NUCID+" "+line.trim().startsWith(NUCID)+" "+out.length);
@@ -806,9 +835,15 @@ function wrapENSDFText(text) {
             if (tempText.length > 0) {
                 wrapAndaddToNewLines(tempText, NUCID, newLines);
             }
-            tempText = line.trimEnd();
-            if (lines.indexOf(line) === lines.length - 1) { //last line
-                wrapAndaddToNewLines(tempText, NUCID, newLines);
+            if (comBody.trim().length > 0) {
+                tempText = line.trimEnd();
+                if (lines.indexOf(line) === lines.length - 1) { //last line				
+                    wrapAndaddToNewLines(tempText, NUCID, newLines);
+                }
+            }
+            else if (isSep) {
+                newLines.push(line);
+                tempText = "";
             }
             if (NUCID1.length > 0) {
                 NUCID = NUCID1;
