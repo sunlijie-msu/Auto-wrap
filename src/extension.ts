@@ -826,6 +826,9 @@ function wrapENSDFText(text:string): string[] {
 				}
 				newLines.push(line);
 			}else if(tempText.length>0){
+				if(tempBody.trim().length===0 && line.trim().length>0){
+					tempBody=line.trim();
+				}
 				tempText=tempText.trimEnd()+" "+tempBody.trim();
 				if(lines.indexOf(line)===lines.length-1){//last line
 					wrapAndaddToNewLines(tempText,NUCID,newLines);
