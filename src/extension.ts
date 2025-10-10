@@ -378,6 +378,9 @@ function extractLeadingNUCID(text: string): string {
 	let n=s.indexOf(" ");
 	if(n>0){
 		s=s.substring(0,n);
+	}
+
+	if(s.length>0){
 		if(s.length<=5 && (isNUCID(s) || isA(s)) ){
 			return s.toUpperCase();
 		}
@@ -402,6 +405,7 @@ function extractLeadingNUCID(text: string): string {
 	if(isNUCID(s) || isA(s)){
 		return s.toUpperCase();
 	}
+
 	return "";
 }
 
@@ -792,7 +796,13 @@ function wrapENSDFText(text:string): string[] {
 							isSep=true;
 						}
 					}					
-				}else if(/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType===" PN "){//regular record line or continuation record line
+				}else if(/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType===" PN " || tempType.trim().length===0){//regular record line or continuation record line
+					isComLine=false;
+					tempBody="";
+				}else if( /^[\s][\s]([X][A-Za-z1-9]|[PN][1-3])$/.test(tempType.toUpperCase()) ){//XREF list record line, multipole parent or Norm record line									
+					isComLine=false;
+					tempBody="";
+				}else if( /^[\s][P][N][1-3]$/.test(tempType.toUpperCase()) ){//multipole PNorm record line									
 					isComLine=false;
 					tempBody="";
 				}
@@ -802,12 +812,12 @@ function wrapENSDFText(text:string): string[] {
 				//	isComLine=true;
 				//}
 
-				//console.log(line.indexOf(tempNUCID)+" ##"+tempNUCID.length+"$$$"+line+"@@@"+"abc".indexOf("a"));
-				//console.log("@@@"+tempNUCID+"###"+NUCID+"$$$"+tempType+"##"+isComLine+"##"+tempLine+"  $$"+tempBody+"##");
+				//console.log(line.indexOf(tempNUCID)+" ##"+tempNUCID.length+"$$$Line="+line+"@@@"+"abc".indexOf("a"));
+				//console.log("   @@@tempNUCID="+tempNUCID+"$NUCID="+NUCID+"$$$type="+tempType+"##isCom="+isComLine+"##tempLine="+tempLine+"$$tempBody="+tempBody+"##");
 			}
 
 			
-			//console.log("#### "+tempNUCID+"@"+line+" isComLine="+isComLine+"  $"+tempText);
+			//console.log("    ####tempNUCID="+tempNUCID+"@line="+line+"$isComLine="+isComLine+"$isSep="+isSep+"$tempText="+tempText);
 
 			if(!isComLine || isSep){		
 				if(tempText.length>0){
@@ -1432,7 +1442,7 @@ let lastDocumentVersion = -1;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {		
+export function activate(context: vscode.ExtensionContext) {
 	let extensionID="ensdf";
 	let commandName="wrap80";
 	let commandFullName=extensionID+"."+commandName;
