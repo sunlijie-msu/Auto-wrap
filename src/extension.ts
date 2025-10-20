@@ -787,7 +787,7 @@ function wrapENSDFText(text:string): string[] {
 				let tempType=tempLine.substring(5,9);
 				
 				tempBody=line;
-				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN\s]\s)$/.test(tempType.toUpperCase()) ){
+				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPQN\s]\s)$/.test(tempType.toUpperCase()) ){
 					isComLine=true;
 
 					if(tempNUCID===NUCID){
@@ -796,7 +796,7 @@ function wrapENSDFText(text:string): string[] {
 							isSep=true;
 						}
 					}					
-				}else if(/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType===" PN " || tempType.trim().length===0){//regular record line or continuation record line
+				}else if(/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPQNH]\s)$/.test(tempType.toUpperCase()) || tempType===" PN " || tempType.trim().length===0){//regular record line or continuation record line
 					isComLine=false;
 					tempBody="";
 				}else if( /^[\s][\s]([X][A-Za-z1-9]|[PN][1-3])$/.test(tempType.toUpperCase()) ){//XREF list record line, multipole parent or Norm record line									
