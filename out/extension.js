@@ -750,7 +750,7 @@ function wrapENSDFText(text) {
                 let tempLine = formatNUCID(tempNUCID) + tempBody;
                 let tempType = tempLine.substring(5, 9);
                 tempBody = line;
-                if (/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPN\s]\s)$/.test(tempType.toUpperCase())) {
+                if (/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPQN\s]\s)$/.test(tempType.toUpperCase())) {
                     isComLine = true;
                     if (tempNUCID === NUCID) {
                         tempBody = tempLine.substring(9);
@@ -759,7 +759,7 @@ function wrapENSDFText(text) {
                         }
                     }
                 }
-                else if (/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPNH]\s)$/.test(tempType.toUpperCase()) || tempType === " PN " || tempType.trim().length === 0) { //regular record line or continuation record line
+                else if (/^[\s1-9A-Z][\s]([\sD][PNT]|[LGBAEPQNH]\s)$/.test(tempType.toUpperCase()) || tempType === " PN " || tempType.trim().length === 0) { //regular record line or continuation record line
                     isComLine = false;
                     tempBody = "";
                 }
