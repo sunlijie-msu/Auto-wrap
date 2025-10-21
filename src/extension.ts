@@ -779,11 +779,13 @@ function wrapENSDFText(text:string): string[] {
 			let tempBody="";
 	
 			if(tempNUCID.length>0){
-				let index=line.toUpperCase().indexOf(tempNUCID);
-				
-				tempBody=line.substring(index+tempNUCID.length);
-				
-				let tempLine=formatNUCID(tempNUCID)+tempBody;
+								
+				let tempNUCID1=formatNUCID(tempNUCID);
+				let tempNUCID2=tempNUCID1.trimStart();//for case like, NUCID=" 35K ", make sure the ending space is kept
+				let index=line.toUpperCase().indexOf(tempNUCID2);			
+				tempBody=line.substring(index+tempNUCID2.length);
+	
+				let tempLine=tempNUCID1+tempBody;
 				let tempType=tempLine.substring(5,9);
 				
 				tempBody=line;
