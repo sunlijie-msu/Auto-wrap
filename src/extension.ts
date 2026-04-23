@@ -123,6 +123,7 @@ function formatNUCID(NUCID: string): string {
 
 		s=AS.padStart(3)+EN.padEnd(2);
 
+		//console.log("###NUCID="+NUCID+"##s="+s+"##");
 		return s;
     } catch (e) {
         return "";
@@ -141,7 +142,7 @@ function formatNUCID(NUCID: string): string {
  *              could be "151HO cL ", instead of "151HO2cL "
  * @returns 
  */
-function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean): string {
+function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean,isParticle:boolean): string {
     let s = "";
     let n = 0;
     if (type.trim().length > 4) {
@@ -237,13 +238,14 @@ function makeENSDFLinePrefix(NUCID: string, type: string, AsIs:boolean): string 
         } else if (s.length === 1) { // NPQLGBEAH record
             s1 = "  ";
             s2 = s + " ";
-        } else if (s.length === 2 && c1 === "D" && "NPDT".includes(c2)) { // delayed-particle record
+        } else if (s.length === 2 && c1 === "D" && ("DT".includes(c2)|| ("PN".includes(c2)&&isParticle))) { // delayed-particle record
+			//"DP" may be for parent document, "DN" may be for norm document
             s1 = "  ";
             s2 = s;
-        } else if ((c1 === "C" || c1 === "D") && "LGBEADHQ".includes(c2)) { // "DL","DE","DG"
+        } else if ((c1 === "C" || c1 === "D") && "LGBEADHQPN".includes(c2)) { // "DL","DE","DG"
             s1 = " " + s.charAt(0);
             s2 = s.substring(1);
-        } else if ((c2 === "C" || c2 === "D") && s.length > 2 && "LGBEADHQ".includes(s.toUpperCase().charAt(2))) {
+        } else if ((c2 === "C" || c2 === "D") && s.length > 2 && "LGBEADHQPN".includes(s.toUpperCase().charAt(2))) {
             s1 = s.substring(0, 2);
             s2 = s.substring(2);
 
@@ -304,9 +306,12 @@ function parseNUCIDandComType(line: string): string[] {
             s=s.substring(i).trim();
 			let s1=s.toUpperCase();
 
+			let isParticle=false;
+
 			//console.log("#### s1="+s1+"  line="+line);
 			if(/^[2-9A-Z]?[CD][\sD][PN]/.test(s1)){//delayed or prompt proton or neutron
-				
+				isParticle=true;
+
 				let match = s1.match(/^[2-9A-Z]?[CD][\sD][PN]/);
 				if (match) {
 					lineType =s.substring(0,match[0].length);
@@ -316,6 +321,7 @@ function parseNUCIDandComType(line: string): string[] {
 			}else if(/^D[PN]/.test(s1) && /^\d/.test(s1.substring(2).trim())){
 				//delayed-particle record line
 				//do nothing
+				isParticle=true;
 			}else if(/^[2-9A-Z]?[CD][\sLGBAENPQ]?/.test(s1)){
 				let n=s.indexOf(" ");
 				if(n>0){
@@ -345,7 +351,7 @@ function parseNUCIDandComType(line: string): string[] {
 				out[0]=NUCID;
 				out[1]=lineType;
 				out[2]=comBody;
-				out[3]=makeENSDFLinePrefix(NUCID,lineType,true);
+				out[3]=makeENSDFLinePrefix(NUCID,lineType,true,isParticle);
 
 				//console.log(line);
 				//console.log("NUCID="+NUCID+"$type="+lineType+"$prefix="+out[3]+"$body="+comBody);
@@ -779,15 +785,17 @@ function wrapENSDFText(text:string): string[] {
 			let tempBody="";
 	
 			if(tempNUCID.length>0){
-								
 				let tempNUCID1=formatNUCID(tempNUCID);
 				let tempNUCID2=tempNUCID1.trimStart();//for case like, NUCID=" 35K ", make sure the ending space is kept
 				let index=line.toUpperCase().indexOf(tempNUCID2);			
 				tempBody=line.substring(index+tempNUCID2.length);
-	
+				
+
 				let tempLine=tempNUCID1+tempBody;
 				let tempType=tempLine.substring(5,9);
 				
+				//console.log("   @@@tempNUCID="+tempNUCID+"$NUCID="+NUCID+"$$$type="+tempType+"##"+formatNUCID(tempNUCID)+"@@"+tempLine);
+
 				tempBody=line;
 				if(/^[\s1-9A-Z][CD]([\sD][PN]|[LGBAEPQN\s]\s)$/.test(tempType.toUpperCase()) ){
 					isComLine=true;
