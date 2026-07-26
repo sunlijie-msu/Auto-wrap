@@ -4,7 +4,7 @@ A lightweight VS Code extension to wrap ENSDF comment lines to 80 columns. It pr
 
 ## Installation
 
-- Install from a VSIX: press Ctrl+Shift+P → "Extensions: Install from VSIX…" and select `ensdf-auto-wrap-0.1.0.vsix` (or the latest).
+- Install from a VSIX: press Ctrl+Shift+P → "Extensions: Install from VSIX…" and select `ensdf-auto-wrap-0.1.4.vsix` (or the latest).
 
 ## Usage
 
